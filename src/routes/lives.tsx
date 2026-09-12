@@ -6,6 +6,7 @@ import { LifeForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
 import { InView } from "@/components/museum/motion";
 import { EmptyRoom } from "@/components/museum/empty-room";
+import { asOptions, OptionPicks } from "@/components/museum/option-picks";
 import { listLives } from "@/lib/museum/api";
 import { LIFE_CATEGORIES } from "@/lib/museum/constants";
 import { catalogNumber, excerpt } from "@/lib/utils";
@@ -39,25 +40,14 @@ function LivesPage() {
         </div>
       ) : null}
       <div className="mx-auto max-w-6xl px-5 md:px-10">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Categories">
-          <button
-            type="button"
-            onClick={() => setCategory("")}
-            className={`min-h-11 px-3 text-[11px] tracking-[0.16em] uppercase ${category === "" ? "text-gold" : "text-mist"}`}
-          >
-            All
-          </button>
-          {LIFE_CATEGORIES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setCategory(item)}
-              className={`min-h-11 px-3 text-[11px] tracking-[0.16em] uppercase ${category === item ? "text-gold" : "text-mist"}`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <OptionPicks
+          label="Which almost"
+          emptyLabel="all of them"
+          allowEmpty
+          value={category}
+          onChange={setCategory}
+          options={asOptions(LIFE_CATEGORIES)}
+        />
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           {visible.map((life) => (
             <InView key={life.id}>

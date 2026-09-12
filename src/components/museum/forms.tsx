@@ -21,13 +21,15 @@ import {
 import { rememberCode } from "@/lib/museum/local";
 import { ClaimSlip } from "./claim-slip";
 import { CrisisPanel, SafetyNote } from "./safety-note";
-import { Field, PrimaryButton, SelectInput, TextArea, TextInput } from "./fields";
-
-function years() {
-  const list = [];
-  for (let year = 2026; year >= 1960; year -= 1) list.push(year);
-  return list;
-}
+import { Field, PrimaryButton, TextArea, TextInput } from "./fields";
+import {
+  asOptions,
+  ChoiceCards,
+  CityPicks,
+  emotionOptions,
+  OptionPicks,
+  YearPicks,
+} from "./option-picks";
 
 function offsetMinutes() {
   return new Date().getTimezoneOffset();
@@ -43,13 +45,30 @@ async function afterSubmit(title: string, emotion?: string, room?: string) {
 }
 
 function PublicConfirm({ tone }: { tone?: "paper" }) {
+  const [ok, setOk] = useState(false);
   return (
-    <label className="flex items-start gap-3 text-sm leading-relaxed">
-      <input type="checkbox" name="publicOk" required className="mt-1 size-4 accent-current" />
-      <span className={tone === "paper" ? "text-letter/75" : "text-mist"}>
-        I understand anyone in these rooms can read this. No names. I am 16 or older.
-      </span>
-    </label>
+    <div className="space-y-2">
+      <input
+        type="checkbox"
+        name="publicOk"
+        required
+        checked={ok}
+        onChange={() => setOk((value) => !value)}
+        className="sr-only"
+      />
+      <button
+        type="button"
+        onClick={() => setOk((value) => !value)}
+        aria-pressed={ok}
+        className={`sticker ${tone === "paper" ? "sticker-paper" : ""} ${ok ? "is-on" : ""}`}
+      >
+        <span className="sticker-mark">{ok ? "♡" : "○"}</span>
+        {ok ? "I understand — public, 16+" : "tap to agree — public, 16+"}
+      </button>
+      <p className={`text-sm leading-relaxed ${tone === "paper" ? "text-letter/75" : "text-mist"}`}>
+        Anyone in these rooms can read this. No names. Cities only.
+      </p>
+    </div>
   );
 }
 
@@ -58,6 +77,7 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
   const [pending, setPending] = useState(false);
   const [crisis, setCrisis] = useState(false);
   const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
+  const [location, setLocation] = useState("");
   const tone = paper ? "paper" : undefined;
 
   if (crisis) return <CrisisPanel />;
@@ -111,32 +131,36 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
       <Field label="Message">
         <TextArea name="content" required maxLength={4000} placeholder="Write as if the person might never read it." tone={tone} />
       </Field>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Category">
-          <SelectInput name="category" defaultValue="Love" tone={tone}>
-            {MEMORY_CATEGORIES.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </SelectInput>
-        </Field>
-        <Field label="Emotion">
-          <SelectInput name="emotion" defaultValue="Nostalgia" tone={tone}>
-            {EMOTIONS.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </SelectInput>
-        </Field>
-        <Field label="Year">
-          <SelectInput name="year" defaultValue="" tone={tone}>
-            <option value="">Unknown</option>
-            {years().map((year) => (
-              <option key={year}>{year}</option>
-            ))}
-          </SelectInput>
-        </Field>
-        <Field label="City or region">
-          <TextInput name="location" list="city-list" maxLength={48} placeholder="Manila, not a street" tone={tone} />
-        </Field>
+      <div className="space-y-5">
+        <OptionPicks
+          name="category"
+          label="This belongs with"
+          defaultValue="Love"
+          options={asOptions(MEMORY_CATEGORIES)}
+          tone={tone ?? "ink"}
+        />
+        <OptionPicks
+          name="emotion"
+          label="It feels like"
+          defaultValue="Nostalgia"
+          options={emotionOptions(EMOTIONS)}
+          tone={tone ?? "ink"}
+        />
+        <YearPicks name="year" label="When, roughly" tone={tone ?? "ink"} />
+        <div>
+          <Field label="City or region">
+            <TextInput
+              name="location"
+              list="city-list"
+              maxLength={48}
+              placeholder="Manila, not a street"
+              tone={tone}
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+          </Field>
+          <CityPicks value={location} onChange={setLocation} tone={tone ?? "ink"} />
+        </div>
       </div>
       <CityList />
       <PublicConfirm tone={tone} />
@@ -150,6 +174,7 @@ export function LifeForm() {
   const [pending, setPending] = useState(false);
   const [crisis, setCrisis] = useState(false);
   const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
+  const [location, setLocation] = useState("");
 
   if (crisis) return <CrisisPanel />;
   if (claim) {
@@ -200,20 +225,28 @@ export function LifeForm() {
       <Field label="Title">
         <TextInput name="title" required maxLength={120} placeholder="The life I almost lived" />
       </Field>
+      <OptionPicks
+        name="category"
+        label="Which almost"
+        defaultValue="Almost Self"
+        options={asOptions(LIFE_CATEGORIES)}
+      />
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Category">
-          <SelectInput name="category" defaultValue="Almost Self">
-            {LIFE_CATEGORIES.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </SelectInput>
-        </Field>
         <Field label="Age in that life">
           <TextInput name="age" type="number" min={1} max={120} placeholder="Optional" />
         </Field>
-        <Field label="Place">
-          <TextInput name="location" list="city-list" placeholder="Optional city" />
-        </Field>
+        <div>
+          <Field label="Place">
+            <TextInput
+              name="location"
+              list="city-list"
+              placeholder="Optional city"
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+          </Field>
+          <CityPicks value={location} onChange={setLocation} />
+        </div>
         <Field label="Career">
           <TextInput name="career" maxLength={120} placeholder="Optional" />
         </Field>
@@ -291,24 +324,24 @@ export function CapsuleForm() {
       <Field label="Message">
         <TextArea name="content" required placeholder="What should wait?" />
       </Field>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Unlock date">
-          <TextInput name="unlockAt" type="datetime-local" required />
-        </Field>
-        <Field label="Recipient">
-          <SelectInput name="recipient" defaultValue="Future self">
-            {CAPSULE_RECIPIENTS.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </SelectInput>
-        </Field>
-        <Field label="Privacy">
-          <SelectInput name="privacy" defaultValue="public">
-            <option value="public">Public — visible, locked until the date</option>
-            <option value="private">Private — only with the key</option>
-          </SelectInput>
-        </Field>
-      </div>
+      <Field label="Unlock date">
+        <TextInput name="unlockAt" type="datetime-local" required />
+      </Field>
+      <OptionPicks
+        name="recipient"
+        label="For"
+        defaultValue="Future self"
+        options={asOptions(CAPSULE_RECIPIENTS)}
+      />
+      <ChoiceCards
+        name="privacy"
+        label="How it waits"
+        defaultValue="public"
+        options={[
+          { value: "public", label: "Public", hint: "Anyone can see it exists. The words wait until the date." },
+          { value: "private", label: "Private", hint: "Sealed. Only the key on your claim slip opens it." },
+        ]}
+      />
       <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Sealing…" : "Seal this capsule"}</PrimaryButton>
     </form>
@@ -371,13 +404,12 @@ export function VoiceForm() {
       <Field label="Spoken letter">
         <TextArea name="transcript" required placeholder="Write the words you would have said." />
       </Field>
-      <Field label="Category">
-        <SelectInput name="category" defaultValue="Letters">
-          {VOICE_CATEGORIES.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </SelectInput>
-      </Field>
+      <OptionPicks
+        name="category"
+        label="Kind of voice"
+        defaultValue="Letters"
+        options={asOptions(VOICE_CATEGORIES)}
+      />
       <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Placing…" : "Leave this voice"}</PrimaryButton>
     </form>
@@ -494,14 +526,14 @@ export function WallForm({ onCreated }: { onCreated?: () => void }) {
       <Field label="A sentence for the wall">
         <TextArea name="content" required maxLength={500} placeholder="No advice. No performance. Just what is true." className="min-h-24" />
       </Field>
-      <Field label="Emotion">
-        <SelectInput name="emotion" defaultValue="">
-          <option value="">Unspecified</option>
-          {EMOTIONS.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </SelectInput>
-      </Field>
+      <OptionPicks
+        name="emotion"
+        label="It feels like"
+        defaultValue=""
+        allowEmpty
+        emptyLabel="unspecified"
+        options={emotionOptions(EMOTIONS)}
+      />
       <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Pinning…" : "Pin anonymously"}</PrimaryButton>
     </form>

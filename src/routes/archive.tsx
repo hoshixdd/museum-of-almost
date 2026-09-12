@@ -7,6 +7,7 @@ import { GhostButton } from "@/components/museum/fields";
 import { TiltCard } from "@/components/museum/tilt-card";
 import { InView } from "@/components/museum/motion";
 import { EmptyRoom } from "@/components/museum/empty-room";
+import { asOptions, emotionOptions, OptionPicks } from "@/components/museum/option-picks";
 import { listMemories } from "@/lib/museum/api";
 import { EMOTIONS, MEMORY_CATEGORIES } from "@/lib/museum/constants";
 import { catalogNumber, excerpt, formatLocation, formatYear } from "@/lib/utils";
@@ -56,42 +57,32 @@ function ArchivePage() {
         </div>
       ) : null}
       <div className="mx-auto max-w-6xl px-5 md:px-10">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="flex flex-col gap-5">
           <label className="flex-1">
             <span className="sr-only">Search the catalog</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search the catalog…"
-              className="min-h-11 w-full rounded-md bg-ink-elevated px-4 text-sm shadow-[var(--shadow-border)] outline-none placeholder:text-mist focus:shadow-[var(--shadow-border-hover)]"
+              className="min-h-11 w-full rounded-full bg-ink-elevated px-5 text-sm shadow-[var(--shadow-border)] outline-none placeholder:text-mist focus:shadow-[var(--shadow-border-hover)]"
             />
           </label>
-          <label>
-            <span className="sr-only">Emotion</span>
-            <select
-              value={emotion}
-              onChange={(event) => setEmotion(event.target.value)}
-              className="min-h-11 rounded-md bg-ink-elevated px-3 text-sm shadow-[var(--shadow-border)]"
-            >
-              <option value="">All emotions</option>
-              {EMOTIONS.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="sr-only">Category</span>
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="min-h-11 rounded-md bg-ink-elevated px-3 text-sm shadow-[var(--shadow-border)]"
-            >
-              <option value="">All categories</option>
-              {MEMORY_CATEGORIES.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
+          <OptionPicks
+            label="Feeling"
+            emptyLabel="all of them"
+            allowEmpty
+            value={emotion}
+            onChange={setEmotion}
+            options={emotionOptions(EMOTIONS)}
+          />
+          <OptionPicks
+            label="Drawer"
+            emptyLabel="whole archive"
+            allowEmpty
+            value={category}
+            onChange={setCategory}
+            options={asOptions(MEMORY_CATEGORIES)}
+          />
         </div>
         <p className="mt-6 text-[11px] tracking-[0.2em] text-mist uppercase">{visible.length} artifacts</p>
         <div className="mt-8 grid gap-8 md:grid-cols-2">

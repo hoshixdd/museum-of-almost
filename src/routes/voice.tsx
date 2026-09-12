@@ -5,6 +5,7 @@ import { RoomHeader } from "@/components/museum/room-header";
 import { VoiceForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
 import { EmptyRoom } from "@/components/museum/empty-room";
+import { asOptions, OptionPicks } from "@/components/museum/option-picks";
 import { listVoices } from "@/lib/museum/api";
 import { VOICE_CATEGORIES } from "@/lib/museum/constants";
 import { catalogNumber, formatDuration } from "@/lib/utils";
@@ -38,21 +39,14 @@ function VoicePage() {
         </div>
       ) : null}
       <div className="mx-auto max-w-3xl px-5 md:px-10">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Voice categories">
-          <button type="button" onClick={() => setCategory("")} className={`min-h-11 px-3 text-[11px] uppercase ${category ? "text-mist" : "text-gold"}`}>
-            All
-          </button>
-          {VOICE_CATEGORIES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setCategory(item)}
-              className={`min-h-11 px-3 text-[11px] uppercase ${category === item ? "text-gold" : "text-mist"}`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <OptionPicks
+          label="Kind of voice"
+          emptyLabel="the whole room"
+          allowEmpty
+          value={category}
+          onChange={setCategory}
+          options={asOptions(VOICE_CATEGORIES)}
+        />
         <ul className="mt-10 divide-y divide-ash">
           {visible.map((voice) => (
             <li key={voice.id}>

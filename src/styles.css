@@ -467,6 +467,159 @@
   transition: transform 720ms var(--ease-door);
 }
 
+.sticker {
+  position: relative;
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-paper);
+  background: color-mix(in oklab, var(--color-ink-elevated) 88%, var(--color-paper) 8%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 232, 0.12),
+    0 0 0 1px rgba(255, 244, 232, 0.1);
+  transform: rotate(var(--tilt, 0deg));
+  transition:
+    background-color 280ms var(--ease-out-expo),
+    color 280ms var(--ease-out-expo),
+    box-shadow 280ms var(--ease-out-expo);
+}
+
+.sticker-mark {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--color-gold);
+  line-height: 1;
+}
+
+.sticker.is-on {
+  background: var(--color-gold);
+  color: var(--color-ink);
+  box-shadow:
+    0 8px 18px rgba(232, 137, 138, 0.28),
+    0 2px 0 rgba(143, 62, 65, 0.35);
+}
+
+.sticker.is-on .sticker-mark {
+  color: var(--color-rust);
+}
+
+.sticker.is-on::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 18%;
+  width: 42%;
+  height: 8px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    -18deg,
+    color-mix(in oklab, var(--color-paper) 55%, var(--color-gold)),
+    color-mix(in oklab, var(--color-paper) 55%, var(--color-gold)) 4px,
+    color-mix(in oklab, var(--color-gold-dim) 70%, white) 4px,
+    color-mix(in oklab, var(--color-gold-dim) 70%, white) 7px
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.sticker-paper {
+  color: var(--color-letter);
+  background: color-mix(in oklab, var(--color-paper) 70%, white);
+  box-shadow: 0 0 0 1px rgba(43, 33, 28, 0.1);
+}
+
+.sticker-paper .sticker-mark {
+  color: var(--color-rust);
+}
+
+.sticker-paper.is-on {
+  background: var(--color-gold);
+  color: var(--color-ink);
+}
+
+.sticker-year {
+  min-height: 2.1rem;
+  padding: 0.2rem 0.65rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+}
+
+.sticker-city {
+  min-height: 2rem;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.choice-card {
+  position: relative;
+  min-height: 6.5rem;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 1.15rem 1.1rem 1rem;
+  text-align: left;
+  color: var(--color-paper);
+  background: var(--color-ink-elevated);
+  box-shadow: var(--shadow-border);
+  transition:
+    background-color 320ms var(--ease-out-expo),
+    color 320ms var(--ease-out-expo),
+    box-shadow 320ms var(--ease-out-expo);
+}
+
+.choice-card-paper {
+  color: var(--color-letter);
+  background: color-mix(in oklab, var(--color-paper) 82%, white);
+  box-shadow: 0 10px 24px rgba(43, 33, 28, 0.08);
+}
+
+.choice-card.is-on {
+  background: var(--color-paper);
+  color: var(--color-letter);
+  box-shadow: var(--shadow-letter);
+}
+
+.choice-tape {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  width: 42px;
+  height: 12px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    115deg,
+    color-mix(in oklab, var(--color-gold) 70%, white),
+    color-mix(in oklab, var(--color-gold) 70%, white) 5px,
+    color-mix(in oklab, var(--color-gold-dim) 80%, var(--color-paper)) 5px,
+    color-mix(in oklab, var(--color-gold-dim) 80%, var(--color-paper)) 9px
+  );
+  transform: rotate(8deg);
+  opacity: 0.35;
+}
+
+.choice-card.is-on .choice-tape {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticker,
+  .choice-card {
+    transform: none !important;
+    transition: none;
+  }
+  .sticker.is-on::after,
+  .choice-tape {
+    display: none;
+  }
+}
+
 .ember-glow {
   position: absolute;
   top: 42%;
