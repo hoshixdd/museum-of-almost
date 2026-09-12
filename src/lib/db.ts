@@ -3,12 +3,19 @@ import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 
+function pickDatabaseUrl(): string | undefined {
+  if (typeof process === "undefined") return undefined;
+  // Vercel + Neon may inject any of these. Prefer the pooled connection.
+  for (const key of ["DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL"]) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
 // An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
 // "unset" — otherwise production would silently run on the PGLite fallback.
-const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
-const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+const databaseUrl = pickDatabaseUrl();
 
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
@@ -93,7 +100,13 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const pool = new Pool({ connectionString: databaseUrl });
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      max: 3,
+      connectionTimeoutMillis: 20_000,
+      idleTimeoutMillis: 10_000,
+    });
+    await applyNeonMigrations(pool);
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -103,6 +116,39 @@ function createNeonSql(): Promise<Sql> {
     throw err;
   });
   return globalRef.__pgSqlPromise__;
+}
+
+async function applyNeonMigrations(pool: import("pg").Pool) {
+  const migrations = import.meta.glob("/migrations/*.sql", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  const client = await pool.connect();
+  try {
+    await client.query(
+      "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+    );
+    const applied = (await client.query("SELECT name FROM _migrations")).rows.map((r) => r.name);
+    for (const { name, path } of pendingMigrations(Object.keys(migrations), applied)) {
+      try {
+        await client.query("BEGIN");
+        await client.query(migrations[path]);
+        await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
+        await client.query("COMMIT");
+        console.log(`[db] applied ${name}`);
+      } catch (err) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          /* connection may already be dead */
+        }
+        throw err;
+      }
+    }
+  } finally {
+    client.release();
+  }
 }
 
 async function createPgliteSql(): Promise<Sql> {
