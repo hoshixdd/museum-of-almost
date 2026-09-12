@@ -86,18 +86,10 @@ export function GhostButton({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { to?: string }) {
   return (
-    <button
-      type="button"
-      {...props}
-      className={cn(
-        "inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm text-gold",
-        "shadow-[var(--shadow-border)] transition-[box-shadow,color,transform] duration-300",
-        "hover:shadow-[var(--shadow-border-hover)] hover:text-paper",
-        "active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-gold/80",
-        props.className,
-      )}
-    >
-      {children}
-    </button>
+    <Magnetic className="inline-block">
+      <button type="button" {...props} className={cn("ghost-pill", props.className)}>
+        {children}
+      </button>
+    </Magnetic>
   );
 }

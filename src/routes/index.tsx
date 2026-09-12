@@ -110,14 +110,24 @@ function Entrance() {
             <li>No names. No streets. No one else’s private life.</li>
             <li>You can leave any room. If you are in crisis, get help first.</li>
           </ul>
-          <label className="mt-6 flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={ageOk} onChange={(event) => setAgeOk(event.target.checked)} className="mt-1 size-4" />
-            I am 16 or older.
-          </label>
-          <label className="mt-3 flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={readOk} onChange={(event) => setReadOk(event.target.checked)} className="mt-1 size-4" />
-            I understand letters here are public.
-          </label>
+          <button
+            type="button"
+            onClick={() => setAgeOk((value) => !value)}
+            aria-pressed={ageOk}
+            className={`sticker sticker-paper mt-6 ${ageOk ? "is-on" : ""}`}
+          >
+            <span className="sticker-mark">{ageOk ? "♡" : "○"}</span>
+            I am 16 or older
+          </button>
+          <button
+            type="button"
+            onClick={() => setReadOk((value) => !value)}
+            aria-pressed={readOk}
+            className={`sticker sticker-paper mt-2 ${readOk ? "is-on" : ""}`}
+          >
+            <span className="sticker-mark">{readOk ? "♡" : "○"}</span>
+            letters here are public
+          </button>
           <button
             type="button"
             disabled={!ageOk || !readOk}

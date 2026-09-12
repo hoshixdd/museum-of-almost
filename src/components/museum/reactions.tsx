@@ -58,12 +58,7 @@ export function Reactions({
               type="button"
               onClick={() => onReact(reaction.key)}
               disabled={used}
-              className={cn(
-                "min-h-11 rounded-full px-4 text-sm transition-colors duration-200",
-                used
-                  ? "bg-gold/20 text-gold"
-                  : "text-mist shadow-[var(--shadow-border)] hover:text-paper hover:shadow-[var(--shadow-border-hover)]",
-              )}
+              className={cn("sticker", used && "is-on")}
             >
               {reaction.label}
               {counts && counts[reaction.key] ? ` · ${counts[reaction.key]}` : ""}
@@ -98,7 +93,7 @@ export function Reactions({
             <button
               key={reason}
               type="button"
-              className="min-h-11 rounded-full px-3 text-sm text-mist shadow-[var(--shadow-border)] hover:text-paper"
+              className="sticker"
               onClick={async () => {
                 await reportContent({
                   data: {

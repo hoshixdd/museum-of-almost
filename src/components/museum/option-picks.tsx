@@ -63,7 +63,7 @@ export function OptionPicks({
   const groupId = useId();
   const [inner, setInner] = useState(defaultValue);
   const current = value ?? inner;
-  const items = allowEmpty ? [{ value: "", label: emptyLabel, mark: "∞" }, ...options] : options;
+  const items = allowEmpty ? [{ value: "", label: emptyLabel }, ...options] : options;
 
   function pick(next: string) {
     if (value === undefined) setInner(next);
@@ -71,12 +71,12 @@ export function OptionPicks({
   }
 
   return (
-    <fieldset className="min-w-0">
-      <legend id={groupId} className="mb-3 text-[11px] tracking-[0.2em] text-gold uppercase">
+    <fieldset className="w-full min-w-0 max-w-full">
+      <legend id={groupId} className="mb-2 w-full text-[11px] tracking-[0.2em] text-gold uppercase">
         {label}
       </legend>
       {name ? <input type="hidden" name={name} value={current} /> : null}
-      <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={groupId}>
+      <div className="sticker-row" role="radiogroup" aria-labelledby={groupId}>
         {items.map((item, index) => {
           const on = current === item.value;
           const tilt = TILTS[index % TILTS.length];
@@ -94,11 +94,16 @@ export function OptionPicks({
                 opacity: 1,
                 y: 0,
                 rotate: on ? 0 : tilt,
-                scale: on ? 1.04 : 1,
+                scale: on ? 1.05 : 1,
               }}
-              transition={{ duration: 0.42, ease: easeOutExpo, delay: reduce ? 0 : index * 0.028 }}
+              transition={{
+                type: reduce ? "tween" : "spring",
+                stiffness: 420,
+                damping: 24,
+                delay: reduce ? 0 : Math.min(index * 0.02, 0.2),
+              }}
               whileTap={reduce ? undefined : { scale: 0.94 }}
-              whileHover={reduce ? undefined : { y: -2, rotate: 0 }}
+              whileHover={reduce ? undefined : { y: -3, rotate: 0 }}
             >
               {item.mark ? <span className="sticker-mark">{item.mark}</span> : null}
               <span>{item.label}</span>
@@ -127,7 +132,7 @@ export function ChoiceCards({
   const [current, setCurrent] = useState(defaultValue);
 
   return (
-    <fieldset>
+    <fieldset className="w-full min-w-0 max-w-full">
       <legend className="mb-3 text-[11px] tracking-[0.2em] text-gold uppercase">{label}</legend>
       <input type="hidden" name={name} value={current} />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -191,10 +196,10 @@ export function YearPicks({
   const years = useMemo(() => (decade == null ? [] : yearsIn(decade)), [decade]);
 
   return (
-    <fieldset>
+    <fieldset className="w-full min-w-0 max-w-full">
       <legend className="mb-3 text-[11px] tracking-[0.2em] text-gold uppercase">{label}</legend>
       <input type="hidden" name={name} value={year} />
-      <div className="flex flex-wrap gap-2">
+      <div className="sticker-row">
         <motion.button
           type="button"
           className={cn("sticker", tone === "paper" && "sticker-paper", year === "" && "is-on")}
@@ -228,7 +233,7 @@ export function YearPicks({
       </div>
       {years.length ? (
         <motion.div
-          className="mt-3 flex flex-wrap gap-1.5"
+          className="mt-3 sticker-row"
           initial={reduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: easeOutExpo }}
@@ -267,7 +272,7 @@ export function CityPicks({
   const chips = SUGGESTED_CITIES.slice(0, 10);
 
   return (
-    <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Suggested cities">
+    <div className="sticker-row mt-3" aria-label="Suggested cities">
       {chips.map((city, index) => {
         const on = value === city;
         return (

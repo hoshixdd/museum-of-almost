@@ -97,6 +97,23 @@
     outline: 2px solid color-mix(in oklab, var(--color-gold) 80%, white);
     outline-offset: 3px;
   }
+
+  fieldset {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  html.has-cursor,
+  html.has-cursor * {
+    cursor: none !important;
+  }
+
+  html.has-cursor input,
+  html.has-cursor textarea,
+  html.has-cursor select,
+  html.has-cursor [contenteditable="true"] {
+    cursor: text !important;
+  }
 }
 
 @keyframes rise {
@@ -398,24 +415,26 @@
 }
 
 .cursor-ring {
-  width: 34px;
-  height: 34px;
-  margin: -17px 0 0 -17px;
-  border: 1px solid color-mix(in oklab, var(--color-gold) 80%, var(--color-paper));
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 75%, var(--color-paper));
   transition:
-    width 220ms var(--ease-out-expo),
-    height 220ms var(--ease-out-expo),
-    margin 220ms var(--ease-out-expo),
-    opacity 220ms var(--ease-out-expo),
-    border-color 220ms var(--ease-out-expo);
+    width 280ms var(--ease-out-expo),
+    height 280ms var(--ease-out-expo),
+    margin 280ms var(--ease-out-expo),
+    opacity 280ms var(--ease-out-expo),
+    background-color 280ms var(--ease-out-expo),
+    border-color 280ms var(--ease-out-expo);
 }
 
 .cursor-ring.is-hover {
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  background: color-mix(in oklab, var(--color-gold) 22%, transparent);
   border-color: var(--color-gold);
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .cursor-trail {
@@ -470,14 +489,17 @@
 .sticker {
   position: relative;
   display: inline-flex;
+  max-width: 100%;
   min-height: 2.5rem;
   align-items: center;
   gap: 0.4rem;
+  overflow: visible;
   border-radius: 999px;
-  padding: 0.35rem 0.9rem;
+  padding: 0.4rem 0.95rem;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  white-space: nowrap;
   color: var(--color-paper);
   background: color-mix(in oklab, var(--color-ink-elevated) 88%, var(--color-paper) 8%);
   box-shadow:
@@ -490,6 +512,15 @@
     box-shadow 280ms var(--ease-out-expo);
 }
 
+.sticker-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
 .sticker-mark {
   font-family: var(--font-display);
   font-size: 0.95rem;
@@ -499,6 +530,7 @@
 }
 
 .sticker.is-on {
+  z-index: 1;
   background: var(--color-gold);
   color: var(--color-ink);
   box-shadow:
@@ -513,20 +545,66 @@
 .sticker.is-on::after {
   content: "";
   position: absolute;
-  top: -5px;
-  left: 18%;
-  width: 42%;
-  height: 8px;
-  border-radius: 2px;
+  top: -7px;
+  right: 10px;
+  width: 22px;
+  height: 7px;
+  border-radius: 1px;
   background: repeating-linear-gradient(
-    -18deg,
-    color-mix(in oklab, var(--color-paper) 55%, var(--color-gold)),
-    color-mix(in oklab, var(--color-paper) 55%, var(--color-gold)) 4px,
-    color-mix(in oklab, var(--color-gold-dim) 70%, white) 4px,
-    color-mix(in oklab, var(--color-gold-dim) 70%, white) 7px
+    118deg,
+    color-mix(in oklab, var(--color-paper) 70%, var(--color-gold)),
+    color-mix(in oklab, var(--color-paper) 70%, var(--color-gold)) 3px,
+    color-mix(in oklab, var(--color-gold-dim) 65%, white) 3px,
+    color-mix(in oklab, var(--color-gold-dim) 65%, white) 6px
   );
-  opacity: 0.85;
+  opacity: 0.9;
   pointer-events: none;
+  transform: rotate(12deg);
+}
+
+.ghost-pill {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--color-gold);
+  box-shadow: var(--shadow-border);
+  transition:
+    background-color 280ms var(--ease-out-expo),
+    color 280ms var(--ease-out-expo),
+    box-shadow 280ms var(--ease-out-expo),
+    transform 180ms var(--ease-out-expo);
+}
+
+.ghost-pill:hover {
+  color: var(--color-paper);
+  background: color-mix(in oklab, var(--color-gold) 16%, transparent);
+  box-shadow: var(--shadow-border-hover);
+}
+
+.ghost-pill:active {
+  transform: scale(0.96);
+}
+
+.room-tile {
+  position: relative;
+  overflow: hidden;
+}
+
+.room-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--color-gold) 18%, transparent), transparent);
+  transition: width 520ms var(--ease-out-expo);
+}
+
+.room-tile:hover::before {
+  width: 100%;
 }
 
 .sticker-paper {

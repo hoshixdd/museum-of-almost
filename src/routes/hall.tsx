@@ -55,12 +55,11 @@ function Hall() {
               something I need to hear
             </Link>
           </Magnetic>
-          <Link
-            to="/archive"
-            className="inline-flex min-h-12 items-center rounded-full px-6 text-sm text-gold shadow-[var(--shadow-border)]"
-          >
-            leave a letter
-          </Link>
+          <Magnetic className="inline-block">
+            <Link to="/archive" className="ghost-pill">
+              leave a letter
+            </Link>
+          </Magnetic>
         </motion.div>
       </section>
 
@@ -72,7 +71,7 @@ function Hall() {
               <InView>
                 <Link
                   to={room.href}
-                  className="group relative block overflow-hidden rounded-xl bg-ink-elevated px-6 py-7 shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-border-hover)]"
+                  className="room-tile group relative block rounded-xl bg-ink-elevated px-6 py-7 shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-border-hover)]"
                 >
                   <span className="absolute top-3 right-5 font-display text-6xl text-gold/20">
                     {room.roman}

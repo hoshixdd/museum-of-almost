@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { MuseumShell } from "@/components/museum/shell";
 import { RoomHeader } from "@/components/museum/room-header";
 import { MemoryForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
 import { TiltCard } from "@/components/museum/tilt-card";
-import { InView } from "@/components/museum/motion";
+import { easeOutExpo } from "@/components/museum/motion";
 import { EmptyRoom } from "@/components/museum/empty-room";
 import { asOptions, emotionOptions, OptionPicks } from "@/components/museum/option-picks";
 import { listMemories } from "@/lib/museum/api";
@@ -84,27 +85,39 @@ function ArchivePage() {
             options={asOptions(MEMORY_CATEGORIES)}
           />
         </div>
-        <p className="mt-6 text-[11px] tracking-[0.2em] text-mist uppercase">{visible.length} artifacts</p>
-        <div className="mt-8 grid gap-8 md:grid-cols-2">
-          {visible.map((memory, index) => (
-            <InView key={memory.id} className={cn("block", index % 2 === 1 ? "md:mt-10" : "")}>
-              <Link to="/archive/$id" params={{ id: String(memory.id) }} className="block">
-                <TiltCard className="px-7 py-8" tilt={((memory.id % 5) - 2) * 0.7}>
-                  <p className="text-[11px] tracking-[0.24em] text-rust uppercase">
-                    {catalogNumber("ARCHIVE", memory.id)}
-                  </p>
-                  <h2 className="mt-3 font-display text-2xl text-letter">{memory.title}</h2>
-                  <p className="mt-2 text-[11px] tracking-[0.14em] text-letter/55 uppercase">
-                    {formatYear(memory.year)} · {formatLocation(memory.location)}
-                  </p>
-                  <p className="mt-4 font-display text-base leading-relaxed text-letter/90">
-                    {excerpt(memory.content, 180)}
-                  </p>
-                </TiltCard>
-              </Link>
-            </InView>
-          ))}
-        </div>
+        <p className="mt-6 text-[11px] tracking-[0.2em] text-mist uppercase">
+          {visible.length} {visible.length === 1 ? "artifact" : "artifacts"}
+        </p>
+        <motion.div layout className="mt-8 grid gap-8 md:grid-cols-2">
+          <AnimatePresence mode="popLayout">
+            {visible.map((memory, index) => (
+              <motion.div
+                key={memory.id}
+                layout
+                className={cn("block", index % 2 === 1 ? "md:mt-10" : "")}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.4, ease: easeOutExpo }}
+              >
+                <Link to="/archive/$id" params={{ id: String(memory.id) }} className="block">
+                  <TiltCard className="px-7 py-8" tilt={((memory.id % 5) - 2) * 0.7}>
+                    <p className="text-[11px] tracking-[0.24em] text-rust uppercase">
+                      {catalogNumber("ARCHIVE", memory.id)}
+                    </p>
+                    <h2 className="mt-3 font-display text-2xl text-letter">{memory.title}</h2>
+                    <p className="mt-2 text-[11px] tracking-[0.14em] text-letter/55 uppercase">
+                      {formatYear(memory.year)} · {formatLocation(memory.location)}
+                    </p>
+                    <p className="mt-4 font-display text-base leading-relaxed text-letter/90">
+                      {excerpt(memory.content, 180)}
+                    </p>
+                  </TiltCard>
+                </Link>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
         {visible.length === 0 ? (
           <EmptyRoom line="Nothing in this drawer." action="Leave the first letter" href="/archive" />
         ) : null}
