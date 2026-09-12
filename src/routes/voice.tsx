@@ -4,6 +4,7 @@ import { MuseumShell } from "@/components/museum/shell";
 import { RoomHeader } from "@/components/museum/room-header";
 import { VoiceForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { listVoices } from "@/lib/museum/api";
 import { VOICE_CATEGORIES } from "@/lib/museum/constants";
 import { catalogNumber, formatDuration } from "@/lib/utils";
@@ -24,10 +25,10 @@ function VoicePage() {
       <RoomHeader
         kicker="Gallery IV"
         title="The Voice Room"
-        line="Sit in the dark. Listen to one voice at a time. These are spoken letters, read aloud in the room."
+        line="Spoken letters, read aloud in this browser. Nothing is recorded. Sit in the dark and listen to one at a time."
         action={
           <GhostButton onClick={() => setCompose((value) => !value)}>
-            {compose ? "Close" : "Leave a voice"}
+            {compose ? "Close" : "Leave a spoken letter"}
           </GhostButton>
         }
       />
@@ -37,7 +38,7 @@ function VoicePage() {
         </div>
       ) : null}
       <div className="mx-auto max-w-3xl px-5 md:px-10">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Voice categories">
           <button type="button" onClick={() => setCategory("")} className={`min-h-11 px-3 text-[11px] uppercase ${category ? "text-mist" : "text-gold"}`}>
             All
           </button>
@@ -66,6 +67,7 @@ function VoicePage() {
             </li>
           ))}
         </ul>
+        {visible.length === 0 ? <EmptyRoom line="The room is quiet." /> : null}
       </div>
     </MuseumShell>
   );

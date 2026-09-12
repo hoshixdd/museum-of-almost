@@ -1,26 +1,31 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MuseumShell } from "@/components/museum/shell";
 import { Reactions } from "@/components/museum/reactions";
+import { ShareBar } from "@/components/museum/share-bar";
 import { Field, PrimaryButton, TextArea, TextInput } from "@/components/museum/fields";
 import { getBook, updateBook } from "@/lib/museum/api";
 import { getCode, rememberCode } from "@/lib/museum/local";
+import { APP_NAME } from "@/lib/museum/constants";
 import { catalogNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/library_/$id")({
   loader: async ({ params }) => {
-    const stored = typeof window !== "undefined" ? getCode("book", Number(params.id)) : "";
-    const book = await getBook({ data: { id: Number(params.id), editCode: stored || undefined } });
+    const book = await getBook({ data: { id: Number(params.id) } });
     if (!book) throw notFound();
     return book;
   },
+  head: ({ loaderData }) => ({
+    meta: [{ title: `${loaderData?.title ?? "Book"} — ${APP_NAME}` }],
+  }),
   component: BookPage,
 });
 
 function BookPage() {
-  const book = Route.useLoaderData();
-  const [editing, setEditing] = useState(book.canEdit);
+  const initial = Route.useLoaderData();
+  const [book, setBook] = useState(initial);
+  const [editing, setEditing] = useState(false);
   const [code, setCode] = useState("");
   const chapters = [
     { key: "before", label: "Chapter 1 — Before", text: book.chapterBefore, name: "chapterBefore" },
@@ -28,6 +33,17 @@ function BookPage() {
     { key: "change", label: "Chapter 3 — The Change", text: book.chapterChange, name: "chapterChange" },
     { key: "after", label: "Chapter 4 — After", text: book.chapterAfter, name: "chapterAfter" },
   ];
+
+  useEffect(() => {
+    const stored = getCode("book", book.id);
+    if (!stored) return;
+    void getBook({ data: { id: book.id, editCode: stored } }).then((result) => {
+      if (result?.canEdit) {
+        setBook(result);
+        setEditing(true);
+      }
+    });
+  }, [book.id]);
 
   return (
     <MuseumShell>
@@ -60,6 +76,7 @@ function BookPage() {
                 return;
               }
               toast("The book was quietly updated.");
+              setEditing(false);
             }}
           >
             <Field label="Title">
@@ -91,17 +108,19 @@ function BookPage() {
               event.preventDefault();
               const result = await getBook({ data: { id: book.id, editCode: code } });
               if (result?.canEdit) {
-                rememberCode("book", book.id, code);
+                rememberCode("book", book.id, code, book.title);
+                setBook(result);
                 setEditing(true);
               } else {
                 toast.error("That library card does not open this book.");
               }
             }}
           >
-            <TextInput value={code} onChange={(event) => setCode(event.target.value)} placeholder="Library card to continue writing" />
+            <TextInput value={code} onChange={(event) => setCode(event.target.value)} placeholder="This is my book — library card" />
             <PrimaryButton>Continue this book</PrimaryButton>
           </form>
         ) : null}
+        <ShareBar title={book.title} path={`/library/${book.id}`} />
         <Reactions kind="book" id={book.id} />
       </div>
     </MuseumShell>

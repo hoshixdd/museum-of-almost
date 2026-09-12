@@ -11,11 +11,11 @@ export function Letter({ memory, full = false }: { memory: Memory; full?: boolea
       )}
       style={{ perspective: "1200px" }}
     >
-      <p className="text-[10px] tracking-[0.32em] text-gold-dim uppercase">
+      <p className="text-[11px] tracking-[0.28em] text-rust uppercase">
         {catalogNumber("ARCHIVE", memory.id)}
       </p>
       <h2 className="mt-4 font-display text-3xl leading-tight text-letter md:text-4xl">{memory.title}</h2>
-      <p className="mt-3 text-[12px] tracking-[0.18em] text-letter/55 uppercase">
+      <p className="mt-3 text-xs tracking-[0.16em] text-letter/70 uppercase">
         {formatYear(memory.year)} · {formatLocation(memory.location)} · {memory.emotion}
       </p>
       <div className="hairline my-6" />
@@ -28,7 +28,7 @@ export function Letter({ memory, full = false }: { memory: Memory; full?: boolea
       >
         {memory.content}
       </p>
-      <p className="mt-8 text-[10px] tracking-[0.22em] text-letter/40 uppercase">{memory.category}</p>
+      <p className="mt-8 text-[11px] tracking-[0.18em] text-letter/55 uppercase">{memory.category}</p>
     </article>
   );
 }

@@ -5,7 +5,7 @@ import { SafetyNote } from "@/components/museum/safety-note";
 import { SplitTitle } from "@/components/museum/presence";
 import { InView, Magnetic, easeOutExpo } from "@/components/museum/motion";
 import { getMuseumStats } from "@/lib/museum/api";
-import { ANNEXES, APP_TAGLINE, ROOMS } from "@/lib/museum/constants";
+import { ANNEXES, APP_TAGLINE, DAILY_PROMPTS, ROOMS } from "@/lib/museum/constants";
 
 export const Route = createFileRoute("/hall")({
   loader: () => getMuseumStats(),
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/hall")({
 
 function Hall() {
   const stats = Route.useLoaderData();
+  const prompt = DAILY_PROMPTS[new Date().getUTCDay() % DAILY_PROMPTS.length];
 
   return (
     <MuseumShell>
@@ -32,8 +33,16 @@ function Hall() {
           Nothing here is ranked. Nothing is a performance. {stats.artifacts} stories are already
           waiting. {APP_TAGLINE}
         </motion.p>
+        <motion.p
+          className="mt-4 font-display text-xl text-gold italic"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.7, ease: easeOutExpo }}
+        >
+          tonight’s prompt: {prompt}
+        </motion.p>
         <motion.div
-          className="mt-9"
+          className="mt-9 flex flex-wrap gap-3"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45, duration: 0.7, ease: easeOutExpo }}
@@ -41,11 +50,17 @@ function Hall() {
           <Magnetic>
             <Link
               to="/needed"
-              className="inline-flex min-h-12 items-center rounded-full bg-gold px-7 text-sm font-semibold text-paper transition-transform duration-150 hover:bg-gold-dim active:scale-[0.96]"
+              className="inline-flex min-h-12 items-center rounded-full bg-gold px-7 text-sm font-semibold text-ink transition-transform duration-150 hover:bg-gold-dim active:scale-[0.96]"
             >
               something I need to hear
             </Link>
           </Magnetic>
+          <Link
+            to="/archive"
+            className="inline-flex min-h-12 items-center rounded-full px-6 text-sm text-gold shadow-[var(--shadow-border)]"
+          >
+            leave a letter
+          </Link>
         </motion.div>
       </section>
 

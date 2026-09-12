@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { PageCurtain } from "@/components/museum/presence";
 import { Toaster } from "sonner";
-import { APP_DESCRIPTION, APP_NAME } from "@/lib/museum/constants";
+import { APP_DESCRIPTION, APP_NAME, SITE_URL } from "@/lib/museum/constants";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -15,9 +15,16 @@ export const Route = createRootRoute({
       { name: "description", content: APP_DESCRIPTION },
       { name: "theme-color", content: "#1c1614" },
       { name: "application-name", content: APP_NAME },
+      { property: "og:title", content: APP_NAME },
+      { property: "og:description", content: APP_DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: `${SITE_URL}/og.jpg` },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "canonical", href: SITE_URL },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },

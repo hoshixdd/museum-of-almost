@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MuseumShell } from "@/components/museum/shell";
 import { RoomHeader } from "@/components/museum/room-header";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { listMemories } from "@/lib/museum/api";
 import { catalogNumber, excerpt } from "@/lib/utils";
 
@@ -17,7 +18,7 @@ function MidnightPage() {
       <RoomHeader
         kicker="Annex"
         title="The Midnight Archive"
-        line="Stories submitted between midnight and dawn, when the rooms are quietest."
+        line="Stories written after midnight in the writer's own time — not a timezone on a server."
       />
       <div className="mx-auto max-w-3xl space-y-8 px-5 md:px-10">
         {memories.map((memory) => (
@@ -27,7 +28,9 @@ function MidnightPage() {
             <p className="mt-3 text-sm leading-relaxed text-mist">{excerpt(memory.content, 200)}</p>
           </Link>
         ))}
-        {memories.length === 0 ? <p className="text-mist">No one has written after midnight yet.</p> : null}
+        {memories.length === 0 ? (
+          <EmptyRoom line="No one has written after midnight yet." action="Leave a night letter" href="/archive" />
+        ) : null}
       </div>
     </MuseumShell>
   );

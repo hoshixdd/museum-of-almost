@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { MuseumShell } from "@/components/museum/shell";
 import { Reactions } from "@/components/museum/reactions";
+import { ShareBar } from "@/components/museum/share-bar";
 import { getVoice } from "@/lib/museum/api";
+import { APP_NAME } from "@/lib/museum/constants";
 import { catalogNumber, formatDuration } from "@/lib/utils";
 
 export const Route = createFileRoute("/voice_/$id")({
@@ -12,6 +14,9 @@ export const Route = createFileRoute("/voice_/$id")({
     if (!voice) throw notFound();
     return voice;
   },
+  head: ({ loaderData }) => ({
+    meta: [{ title: `${loaderData?.title ?? "Voice"} — ${APP_NAME}` }],
+  }),
   component: VoiceListenPage,
 });
 
@@ -19,16 +24,23 @@ function VoiceListenPage() {
   const voice = Route.useLoaderData();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showWords, setShowWords] = useState(false);
+  const [supported, setSupported] = useState(true);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
+    setSupported(typeof window !== "undefined" && "speechSynthesis" in window);
     return () => {
       window.speechSynthesis?.cancel();
     };
   }, []);
 
   function toggle() {
-    if (!window.speechSynthesis) return;
+    if (!window.speechSynthesis) {
+      setSupported(false);
+      setShowWords(true);
+      return;
+    }
     if (playing) {
       window.speechSynthesis.cancel();
       setPlaying(false);
@@ -58,7 +70,7 @@ function VoiceListenPage() {
         <p className="mt-10 text-[11px] tracking-[0.32em] text-gold uppercase">{catalogNumber("VOICE", voice.id)}</p>
         <h1 className="mt-4 font-display text-4xl">{voice.title}</h1>
         <p className="mt-2 text-sm text-mist">
-          {voice.category} · {formatDuration(voice.durationSec)}
+          {voice.category} · {formatDuration(voice.durationSec)} · read by this browser, not a recording
         </p>
         <div className="mt-12 flex h-24 items-end justify-center gap-1">
           {Array.from({ length: 32 }, (_, index) => (
@@ -83,7 +95,20 @@ function VoiceListenPage() {
         >
           {playing ? <Pause className="size-6" strokeWidth={1.4} /> : <Play className="size-6 translate-x-0.5" strokeWidth={1.4} />}
         </button>
-        <p className="mt-10 font-display text-xl leading-relaxed text-paper/90">{voice.transcript}</p>
+        {!supported ? (
+          <p className="mt-6 text-center text-sm text-mist">This browser cannot read aloud. The words are below.</p>
+        ) : null}
+        <button
+          type="button"
+          className="mt-8 text-sm text-gold"
+          onClick={() => setShowWords((value) => !value)}
+        >
+          {showWords ? "Hide the words" : "Show the words"}
+        </button>
+        {showWords ? (
+          <p className="mt-6 font-display text-xl leading-relaxed text-paper/90">{voice.transcript}</p>
+        ) : null}
+        <ShareBar title={voice.title} path={`/voice/${voice.id}`} />
         <Reactions kind="voice" id={voice.id} counts={{ needed: voice.neededCount }} />
       </div>
     </MuseumShell>

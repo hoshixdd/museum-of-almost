@@ -1,9 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { MuseumShell } from "@/components/museum/shell";
 import { RoomHeader } from "@/components/museum/room-header";
 import { Field, PrimaryButton, TextArea } from "@/components/museum/fields";
+import { SafetyNote, CrisisPanel } from "@/components/museum/safety-note";
+import { Reactions } from "@/components/museum/reactions";
 import { createExitNote, listExitNotes } from "@/lib/museum/api";
 
 export const Route = createFileRoute("/exit")({
@@ -13,7 +15,9 @@ export const Route = createFileRoute("/exit")({
 
 function ExitPage() {
   const notes = Route.useLoaderData();
+  const router = useRouter();
   const [left, setLeft] = useState(false);
+  const [crisis, setCrisis] = useState(false);
 
   return (
     <MuseumShell>
@@ -23,7 +27,9 @@ function ExitPage() {
         line="Before you leave: what will you leave behind?"
       />
       <div className="mx-auto max-w-2xl px-5 md:px-10">
-        {left ? (
+        {crisis ? (
+          <CrisisPanel />
+        ) : left ? (
           <div className="py-8 text-center">
             <p className="font-display text-3xl italic">Go gently. The rooms remain open.</p>
             <div className="mt-8 flex flex-col items-center gap-3">
@@ -43,23 +49,30 @@ function ExitPage() {
               const form = new FormData(event.currentTarget);
               const result = await createExitNote({ data: { content: String(form.get("content") ?? "") } });
               if (!result.ok) {
+                if (result.crisis) {
+                  setCrisis(true);
+                  return;
+                }
                 toast.error(result.error);
                 return;
               }
               setLeft(true);
+              void router.invalidate();
             }}
           >
+            <SafetyNote compact />
             <Field label="Leave something">
-              <TextArea name="content" required placeholder="A sentence you do not need to keep carrying." />
+              <TextArea name="content" required minLength={8} placeholder="A sentence you do not need to keep carrying." />
             </Field>
             <PrimaryButton>Leave this behind</PrimaryButton>
           </form>
         )}
-        <div className="mt-16 space-y-4">
+        <div className="mt-16 space-y-6">
           {notes.map((note) => (
-            <p key={note.id} className="font-display text-lg text-paper/80">
-              {note.content}
-            </p>
+            <div key={note.id}>
+              <p className="font-display text-lg text-paper/80">{note.content}</p>
+              <Reactions kind="exit" id={note.id} />
+            </div>
           ))}
         </div>
       </div>

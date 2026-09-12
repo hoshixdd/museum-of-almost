@@ -30,7 +30,7 @@ export function Reactions({
   }, [kind, id]);
 
   const available = REACTIONS.filter((reaction) => {
-    if (kind === "book") return false;
+    if (kind === "book" || kind === "capsule" || kind === "exit" || kind === "reply") return false;
     if (kind === "voice") return reaction.key === "needed";
     if (kind === "wall") return reaction.key === "understand";
     return true;
@@ -38,13 +38,17 @@ export function Reactions({
 
   async function onReact(key: ReactionKey) {
     if (done[key]) return;
+    if (kind !== "memory" && kind !== "life" && kind !== "voice" && kind !== "wall") return;
     markReacted(kind, id, key);
     setDone((current) => ({ ...current, [key]: true }));
-    await reactTo({ data: { kind: kind as "memory" | "life" | "voice" | "wall", id, reaction: key } });
+    await reactTo({ data: { kind, id, reaction: key } });
   }
 
+  const reportKind =
+    kind === "wall" ? "wall" : kind === "exit" ? "exit" : kind === "reply" ? "reply" : kind;
+
   return (
-    <div className="mt-8 space-y-4">
+    <div className={kind === "reply" ? "inline-flex" : "mt-8 space-y-4"}>
       <div className="flex flex-wrap gap-2">
         {available.map((reaction) => {
           const used = Boolean(done[reaction.key]);
@@ -55,9 +59,9 @@ export function Reactions({
               onClick={() => onReact(reaction.key)}
               disabled={used}
               className={cn(
-                "min-h-11 rounded-md px-4 text-[11px] tracking-[0.14em] uppercase transition-[color,background-color,box-shadow] duration-200",
+                "min-h-11 rounded-full px-4 text-sm transition-colors duration-200",
                 used
-                  ? "bg-ink-elevated text-gold"
+                  ? "bg-gold/20 text-gold"
                   : "text-mist shadow-[var(--shadow-border)] hover:text-paper hover:shadow-[var(--shadow-border-hover)]",
               )}
             >
@@ -66,21 +70,23 @@ export function Reactions({
             </button>
           );
         })}
-        <button
-          type="button"
-          onClick={() => setSaved(toggleFavorite(kind, id))}
-          className={cn(
-            "inline-flex min-h-11 items-center gap-2 rounded-md px-4 text-[11px] tracking-[0.14em] uppercase",
-            saved ? "text-gold" : "text-mist hover:text-paper",
-          )}
-        >
-          <Bookmark className="size-3.5" strokeWidth={1.5} />
-          {saved ? "Kept" : "Keep"}
-        </button>
+        {kind !== "exit" && kind !== "reply" ? (
+          <button
+            type="button"
+            onClick={() => setSaved(toggleFavorite(kind, id))}
+            className={cn(
+              "inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm",
+              saved ? "text-gold" : "text-mist hover:text-paper",
+            )}
+          >
+            <Bookmark className="size-3.5" strokeWidth={1.5} />
+            {saved ? "Kept" : "Keep"}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => setReportOpen((value) => !value)}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md px-4 text-[11px] tracking-[0.14em] text-mist uppercase hover:text-paper"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm text-mist hover:text-paper"
         >
           <Flag className="size-3.5" strokeWidth={1.5} />
           Report
@@ -92,11 +98,17 @@ export function Reactions({
             <button
               key={reason}
               type="button"
-              className="min-h-11 rounded-md px-3 text-[11px] text-mist shadow-[var(--shadow-border)] hover:text-paper"
+              className="min-h-11 rounded-full px-3 text-sm text-mist shadow-[var(--shadow-border)] hover:text-paper"
               onClick={async () => {
-                await reportContent({ data: { kind: kind === "wall" ? "wall" : kind, id, reason } });
+                await reportContent({
+                  data: {
+                    kind: reportKind as "memory" | "life" | "voice" | "book" | "wall" | "capsule" | "exit" | "reply",
+                    id,
+                    reason,
+                  },
+                });
                 setReportOpen(false);
-                toast("The attendant has been notified.");
+                toast("Noted. If enough people flag this, it leaves the rooms.");
               }}
             >
               {reason}

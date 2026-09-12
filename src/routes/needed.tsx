@@ -1,21 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { MuseumShell } from "@/components/museum/shell";
 import { Letter } from "@/components/museum/letter";
 import { Reactions } from "@/components/museum/reactions";
+import { ShareBar } from "@/components/museum/share-bar";
 import { GhostButton } from "@/components/museum/fields";
 import { Rise } from "@/components/museum/motion";
 import { getRandomMemory } from "@/lib/museum/api";
+import { rememberNeededId, seenNeededIds } from "@/lib/museum/local";
+import type { Memory } from "@/lib/museum/types";
 
 export const Route = createFileRoute("/needed")({
   staleTime: 0,
-  loader: () => getRandomMemory(),
+  loader: () => getRandomMemory({ data: {} }),
   component: NeededPage,
 });
 
 function NeededPage() {
-  const memory = Route.useLoaderData();
-  const router = useRouter();
+  const initial = Route.useLoaderData();
+  const [memory, setMemory] = useState<Memory | null>(initial);
+
+  useEffect(() => {
+    if (memory) rememberNeededId(memory.id);
+  }, [memory]);
 
   return (
     <MuseumShell>
@@ -34,6 +41,7 @@ function NeededPage() {
         {memory ? (
           <div className="mt-10">
             <Letter memory={memory} full />
+            <ShareBar title={memory.title} path={`/archive/${memory.id}`} />
             <Reactions
               kind="memory"
               id={memory.id}
@@ -44,18 +52,25 @@ function NeededPage() {
               }}
             />
             <div className="mt-8 flex flex-wrap gap-3">
-              <GhostButton onClick={() => void router.invalidate()}>Show me another</GhostButton>
+              <GhostButton
+                onClick={async () => {
+                  const next = await getRandomMemory({ data: { exclude: seenNeededIds() } });
+                  if (next) setMemory(next);
+                }}
+              >
+                Show me another
+              </GhostButton>
               <Link
                 to="/archive/$id"
                 params={{ id: String(memory.id) }}
-                className="inline-flex min-h-12 items-center text-[11px] tracking-[0.2em] text-mist uppercase"
+                className="inline-flex min-h-12 items-center text-sm text-gold"
               >
-                Keep this in the vitrine
+                Open this letter
               </Link>
             </div>
           </div>
         ) : (
-          <p className="mt-10 text-mist">The archive is empty.</p>
+          <p className="mt-12 text-mist">The drawers are empty tonight.</p>
         )}
       </div>
     </MuseumShell>

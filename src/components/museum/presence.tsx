@@ -89,9 +89,15 @@ export function MuseumCursor() {
 
     window.addEventListener("pointermove", onMove, { passive: true });
     frame = requestAnimationFrame(loop);
+    const onVis = () => {
+      if (document.hidden) cancelAnimationFrame(frame);
+      else frame = requestAnimationFrame(loop);
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       document.documentElement.classList.remove("has-cursor");
       window.removeEventListener("pointermove", onMove);
+      document.removeEventListener("visibilitychange", onVis);
       cancelAnimationFrame(frame);
     };
   }, [reduce]);

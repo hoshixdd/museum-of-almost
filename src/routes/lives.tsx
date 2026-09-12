@@ -5,6 +5,7 @@ import { RoomHeader } from "@/components/museum/room-header";
 import { LifeForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
 import { InView } from "@/components/museum/motion";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { listLives } from "@/lib/museum/api";
 import { LIFE_CATEGORIES } from "@/lib/museum/constants";
 import { catalogNumber, excerpt } from "@/lib/utils";
@@ -38,7 +39,7 @@ function LivesPage() {
         </div>
       ) : null}
       <div className="mx-auto max-w-6xl px-5 md:px-10">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Categories">
           <button
             type="button"
             onClick={() => setCategory("")}
@@ -73,6 +74,7 @@ function LivesPage() {
             </InView>
           ))}
         </div>
+        {visible.length === 0 ? <EmptyRoom line="No lives in this drawer yet." /> : null}
       </div>
     </MuseumShell>
   );

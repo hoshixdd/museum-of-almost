@@ -5,7 +5,7 @@ type Tone = "ink" | "paper";
 
 function fieldClass(tone: Tone | undefined, extra?: string) {
   return cn(
-    "min-h-11 w-full rounded-lg px-4 text-sm outline-none",
+    "min-h-11 w-full rounded-lg px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold/80",
     tone === "paper"
       ? "input-paper"
       : "bg-ink-elevated text-paper shadow-[var(--shadow-border)] placeholder:text-mist/70 focus:shadow-[var(--shadow-border-hover)]",
@@ -23,7 +23,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[10px] tracking-[0.28em] text-gold uppercase">{label}</span>
+      <span className="mb-2 block text-[11px] tracking-[0.2em] text-gold uppercase">{label}</span>
       {children}
     </label>
   );
@@ -52,7 +52,12 @@ export function SelectInput({
   tone,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement> & { tone?: Tone }) {
-  return <select {...props} className={cn(fieldClass(tone, "px-3"), props.className)} />;
+  return (
+    <select
+      {...props}
+      className={cn(fieldClass(tone, "px-3"), "color-scheme-inherit", props.className)}
+    />
+  );
 }
 
 export function PrimaryButton({
@@ -65,7 +70,7 @@ export function PrimaryButton({
         type="submit"
         {...props}
         className={cn(
-          "inline-flex min-h-12 items-center justify-center rounded-full bg-gold px-7 text-sm font-semibold text-paper",
+          "inline-flex min-h-12 items-center justify-center rounded-full bg-gold px-7 text-sm font-semibold text-ink",
           "transition-[transform,background-color] duration-150 ease-out hover:bg-gold-dim active:scale-[0.96] disabled:opacity-50",
           props.className,
         )}
@@ -88,7 +93,7 @@ export function GhostButton({
         "inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm text-gold",
         "shadow-[var(--shadow-border)] transition-[box-shadow,color,transform] duration-300",
         "hover:shadow-[var(--shadow-border-hover)] hover:text-paper",
-        "active:scale-[0.96]",
+        "active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-gold/80",
         props.className,
       )}
     >

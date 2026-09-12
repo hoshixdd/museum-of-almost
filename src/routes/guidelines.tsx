@@ -11,6 +11,8 @@ export const Route = createFileRoute("/guidelines")({
       <p>Stay anonymous. Speak from your own life. Leave replies that recognize rather than correct. Report what should not be here. Take a walk if a room becomes too much.</p>
       <h2>The Stranger Wall</h2>
       <p>Replies such as “I understand” belong. Advice, arguments, and moral scorekeeping do not. The wall will refuse some sentences on purpose.</p>
+      <h2>How to report</h2>
+      <p>Open the piece, tap Report, and choose a reason. One visitor cannot wipe the museum. Seed stories stay. If you need a piece you wrote removed, use the claim slip on Your desk.</p>
     </LegalPage>
   ),
 });

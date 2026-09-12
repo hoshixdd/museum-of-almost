@@ -18,14 +18,19 @@ import {
   SUGGESTED_CITIES,
   VOICE_CATEGORIES,
 } from "@/lib/museum/constants";
-import { getAnonymousId, rememberCode } from "@/lib/museum/local";
-import { SafetyNote } from "./safety-note";
+import { rememberCode } from "@/lib/museum/local";
+import { ClaimSlip } from "./claim-slip";
+import { CrisisPanel, SafetyNote } from "./safety-note";
 import { Field, PrimaryButton, SelectInput, TextArea, TextInput } from "./fields";
 
 function years() {
   const list = [];
   for (let year = 2026; year >= 1960; year -= 1) list.push(year);
   return list;
+}
+
+function offsetMinutes() {
+  return new Date().getTimezoneOffset();
 }
 
 async function afterSubmit(title: string, emotion?: string, room?: string) {
@@ -37,10 +42,34 @@ async function afterSubmit(title: string, emotion?: string, room?: string) {
   }
 }
 
+function PublicConfirm({ tone }: { tone?: "paper" }) {
+  return (
+    <label className="flex items-start gap-3 text-sm leading-relaxed">
+      <input type="checkbox" name="publicOk" required className="mt-1 size-4 accent-current" />
+      <span className={tone === "paper" ? "text-letter/75" : "text-mist"}>
+        I understand anyone in these rooms can read this. No names. I am 16 or older.
+      </span>
+    </label>
+  );
+}
+
 export function MemoryForm({ paper = false }: { paper?: boolean }) {
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
+  const [crisis, setCrisis] = useState(false);
+  const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
   const tone = paper ? "paper" : undefined;
+
+  if (crisis) return <CrisisPanel />;
+  if (claim) {
+    return (
+      <ClaimSlip
+        code={claim.code}
+        title={claim.title}
+        onContinue={() => void navigate({ to: "/archive/$id", params: { id: String(claim.id) } })}
+      />
+    );
+  }
 
   return (
     <form
@@ -49,24 +78,30 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         setPending(true);
+        const title = String(form.get("title") ?? "");
         const result = await createMemory({
           data: {
-            title: String(form.get("title") ?? ""),
+            title,
             content: String(form.get("content") ?? ""),
             category: String(form.get("category") ?? "Love") as (typeof MEMORY_CATEGORIES)[number],
             emotion: String(form.get("emotion") ?? "Nostalgia") as (typeof EMOTIONS)[number],
             year: form.get("year") ? Number(form.get("year")) : undefined,
             location: String(form.get("location") ?? "") || undefined,
-            anonymousId: getAnonymousId(),
+            offsetMinutes: offsetMinutes(),
           },
         });
         setPending(false);
         if (!result.ok) {
+          if (result.crisis) {
+            setCrisis(true);
+            return;
+          }
           toast.error(result.error);
           return;
         }
-        void navigate({ to: "/archive/$id", params: { id: String(result.id) } });
-        void afterSubmit(String(form.get("title")), String(form.get("emotion")), "archive");
+        if (result.deleteCode) rememberCode("memory", result.id, result.deleteCode, title);
+        setClaim({ code: result.deleteCode ?? "", id: result.id, title });
+        void afterSubmit(title, String(form.get("emotion")), "archive");
       }}
     >
       <SafetyNote compact />
@@ -100,10 +135,11 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
           </SelectInput>
         </Field>
         <Field label="City or region">
-          <TextInput name="location" list="city-list" maxLength={48} placeholder="Optional" tone={tone} />
+          <TextInput name="location" list="city-list" maxLength={48} placeholder="Manila, not a street" tone={tone} />
         </Field>
       </div>
       <CityList />
+      <PublicConfirm tone={tone} />
       <PrimaryButton disabled={pending}>{pending ? "Preserving…" : "Leave this letter"}</PrimaryButton>
     </form>
   );
@@ -112,6 +148,19 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
 export function LifeForm() {
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
+  const [crisis, setCrisis] = useState(false);
+  const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
+
+  if (crisis) return <CrisisPanel />;
+  if (claim) {
+    return (
+      <ClaimSlip
+        code={claim.code}
+        title={claim.title}
+        onContinue={() => void navigate({ to: "/lives/$id", params: { id: String(claim.id) } })}
+      />
+    );
+  }
 
   return (
     <form
@@ -120,9 +169,10 @@ export function LifeForm() {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         setPending(true);
+        const title = String(form.get("title") ?? "");
         const result = await createLife({
           data: {
-            title: String(form.get("title") ?? ""),
+            title,
             story: String(form.get("story") ?? ""),
             category: String(form.get("category") ?? "Almost Self") as (typeof LIFE_CATEGORIES)[number],
             age: form.get("age") ? Number(form.get("age")) : undefined,
@@ -130,16 +180,20 @@ export function LifeForm() {
             career: String(form.get("career") ?? "") || undefined,
             relationship: String(form.get("relationship") ?? "") || undefined,
             dream: String(form.get("dream") ?? "") || undefined,
-            anonymousId: getAnonymousId(),
           },
         });
         setPending(false);
         if (!result.ok) {
+          if (result.crisis) {
+            setCrisis(true);
+            return;
+          }
           toast.error(result.error);
           return;
         }
-        void navigate({ to: "/lives/$id", params: { id: String(result.id) } });
-        void afterSubmit(String(form.get("title")), undefined, "lives");
+        if (result.deleteCode) rememberCode("life", result.id, result.deleteCode, title);
+        setClaim({ code: result.deleteCode ?? "", id: result.id, title });
+        void afterSubmit(title, undefined, "lives");
       }}
     >
       <SafetyNote compact />
@@ -174,6 +228,7 @@ export function LifeForm() {
         <TextArea name="story" required placeholder="Describe the parallel version without explaining it away." />
       </Field>
       <CityList />
+      <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Preserving…" : "Leave this life"}</PrimaryButton>
     </form>
   );
@@ -182,6 +237,19 @@ export function LifeForm() {
 export function CapsuleForm() {
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
+  const [crisis, setCrisis] = useState(false);
+  const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
+
+  if (crisis) return <CrisisPanel />;
+  if (claim) {
+    return (
+      <ClaimSlip
+        code={claim.code}
+        title={claim.title}
+        onContinue={() => void navigate({ to: "/vault/$id", params: { id: String(claim.id) } })}
+      />
+    );
+  }
 
   return (
     <form
@@ -191,27 +259,29 @@ export function CapsuleForm() {
         const form = new FormData(event.currentTarget);
         const unlock = String(form.get("unlockAt") ?? "");
         setPending(true);
+        const title = String(form.get("title") ?? "");
         const result = await createCapsule({
           data: {
-            title: String(form.get("title") ?? ""),
+            title,
             content: String(form.get("content") ?? ""),
             unlockAt: new Date(unlock).toISOString(),
             privacy: String(form.get("privacy") ?? "public") as "public" | "private",
             recipient: String(form.get("recipient") ?? "Future self") as (typeof CAPSULE_RECIPIENTS)[number],
-            anonymousId: getAnonymousId(),
           },
         });
         setPending(false);
         if (!result.ok) {
+          if (result.crisis) {
+            setCrisis(true);
+            return;
+          }
           toast.error(result.error);
           return;
         }
-        if (result.accessCode) {
-          rememberCode("capsule", result.id, result.accessCode);
-          toast(`Private key: ${result.accessCode}. Keep it to open this capsule.`);
-        }
-        void navigate({ to: "/vault/$id", params: { id: String(result.id) } });
-        void afterSubmit(String(form.get("title")), undefined, "vault");
+        if (result.deleteCode) rememberCode("capsule", result.id, result.deleteCode, title);
+        if (result.accessCode) rememberCode("capsule-key", result.id, result.accessCode, title);
+        setClaim({ code: result.accessCode ?? result.deleteCode ?? "", id: result.id, title });
+        void afterSubmit(title, undefined, "vault");
       }}
     >
       <SafetyNote compact />
@@ -239,6 +309,7 @@ export function CapsuleForm() {
           </SelectInput>
         </Field>
       </div>
+      <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Sealing…" : "Seal this capsule"}</PrimaryButton>
     </form>
   );
@@ -247,6 +318,19 @@ export function CapsuleForm() {
 export function VoiceForm() {
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
+  const [crisis, setCrisis] = useState(false);
+  const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
+
+  if (crisis) return <CrisisPanel />;
+  if (claim) {
+    return (
+      <ClaimSlip
+        code={claim.code}
+        title={claim.title}
+        onContinue={() => void navigate({ to: "/voice/$id", params: { id: String(claim.id) } })}
+      />
+    );
+  }
 
   return (
     <form
@@ -255,26 +339,31 @@ export function VoiceForm() {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         setPending(true);
+        const title = String(form.get("title") ?? "");
         const result = await createVoice({
           data: {
-            title: String(form.get("title") ?? ""),
+            title,
             transcript: String(form.get("transcript") ?? ""),
             category: String(form.get("category") ?? "Letters") as (typeof VOICE_CATEGORIES)[number],
-            anonymousId: getAnonymousId(),
           },
         });
         setPending(false);
         if (!result.ok) {
+          if (result.crisis) {
+            setCrisis(true);
+            return;
+          }
           toast.error(result.error);
           return;
         }
-        void navigate({ to: "/voice/$id", params: { id: String(result.id) } });
-        void afterSubmit(String(form.get("title")), undefined, "voice");
+        if (result.deleteCode) rememberCode("voice", result.id, result.deleteCode, title);
+        setClaim({ code: result.deleteCode ?? "", id: result.id, title });
+        void afterSubmit(title, undefined, "voice");
       }}
     >
       <SafetyNote compact />
       <p className="text-sm text-mist">
-        Speak by writing. The room will read it aloud — no files leave your device, no recording is stored.
+        This is a spoken letter, not a recording. Write the words. The room reads them aloud in your browser — nothing is uploaded.
       </p>
       <Field label="Title">
         <TextInput name="title" required placeholder="A confession to an empty kitchen" />
@@ -289,6 +378,7 @@ export function VoiceForm() {
           ))}
         </SelectInput>
       </Field>
+      <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Placing…" : "Leave this voice"}</PrimaryButton>
     </form>
   );
@@ -297,6 +387,19 @@ export function VoiceForm() {
 export function BookForm() {
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
+  const [crisis, setCrisis] = useState(false);
+  const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
+
+  if (crisis) return <CrisisPanel />;
+  if (claim) {
+    return (
+      <ClaimSlip
+        code={claim.code}
+        title={claim.title}
+        onContinue={() => void navigate({ to: "/library/$id", params: { id: String(claim.id) } })}
+      />
+    );
+  }
 
   return (
     <form
@@ -305,25 +408,28 @@ export function BookForm() {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         setPending(true);
+        const title = String(form.get("title") ?? "");
         const result = await createBook({
           data: {
-            title: String(form.get("title") ?? ""),
+            title,
             chapterBefore: String(form.get("chapterBefore") ?? ""),
             chapterMoment: String(form.get("chapterMoment") ?? ""),
             chapterChange: String(form.get("chapterChange") ?? ""),
             chapterAfter: String(form.get("chapterAfter") ?? ""),
-            anonymousId: getAnonymousId(),
           },
         });
         setPending(false);
         if (!result.ok) {
+          if (result.crisis) {
+            setCrisis(true);
+            return;
+          }
           toast.error(result.error);
           return;
         }
-        rememberCode("book", result.id, result.editCode);
-        toast(`Library card: ${result.editCode}. Keep it to continue this book.`);
-        void navigate({ to: "/library/$id", params: { id: String(result.id) } });
-        void afterSubmit(String(form.get("title")), undefined, "library");
+        if (result.editCode) rememberCode("book", result.id, result.editCode, title);
+        setClaim({ code: result.editCode ?? result.deleteCode ?? "", id: result.id, title });
+        void afterSubmit(title, undefined, "library");
       }}
     >
       <SafetyNote compact />
@@ -342,6 +448,7 @@ export function BookForm() {
       <Field label="Chapter 4 — After">
         <TextArea name="chapterAfter" placeholder="Where are you now? You may leave this blank and return." />
       </Field>
+      <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Binding…" : "Place this book"}</PrimaryButton>
     </form>
   );
@@ -349,6 +456,9 @@ export function BookForm() {
 
 export function WallForm({ onCreated }: { onCreated?: () => void }) {
   const [pending, setPending] = useState(false);
+  const [crisis, setCrisis] = useState(false);
+
+  if (crisis) return <CrisisPanel />;
 
   return (
     <form
@@ -358,23 +468,29 @@ export function WallForm({ onCreated }: { onCreated?: () => void }) {
         const form = event.currentTarget;
         const data = new FormData(form);
         setPending(true);
+        const content = String(data.get("content") ?? "");
         const result = await createWallPost({
           data: {
-            content: String(data.get("content") ?? ""),
+            content,
             emotion: (String(data.get("emotion") ?? "") || undefined) as (typeof EMOTIONS)[number] | undefined,
-            anonymousId: getAnonymousId(),
           },
         });
         setPending(false);
         if (!result.ok) {
+          if (result.crisis) {
+            setCrisis(true);
+            return;
+          }
           toast.error(result.error);
           return;
         }
+        if (result.deleteCode) rememberCode("wall", result.id, result.deleteCode, content.slice(0, 48));
         form.reset();
-        toast("Pinned without a name.");
+        toast("Pinned without a name. Claim slip is on Your desk.");
         onCreated?.();
       }}
     >
+      <SafetyNote compact />
       <Field label="A sentence for the wall">
         <TextArea name="content" required maxLength={500} placeholder="No advice. No performance. Just what is true." className="min-h-24" />
       </Field>
@@ -386,6 +502,7 @@ export function WallForm({ onCreated }: { onCreated?: () => void }) {
           ))}
         </SelectInput>
       </Field>
+      <PublicConfirm />
       <PrimaryButton disabled={pending}>{pending ? "Pinning…" : "Pin anonymously"}</PrimaryButton>
     </form>
   );

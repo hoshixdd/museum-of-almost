@@ -5,6 +5,7 @@ import { RoomHeader } from "@/components/museum/room-header";
 import { BookForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
 import { InView } from "@/components/museum/motion";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { listBooks } from "@/lib/museum/api";
 import { catalogNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ function LibraryPage() {
       <RoomHeader
         kicker="Gallery V"
         title="The Human Library"
-        line="Every person becomes a book. Four chapters. No author name on the spine."
+        line="Every person becomes a book. Four chapters. No author name on the spine. Write at least two before placing it."
         action={
           <GhostButton onClick={() => setCompose((value) => !value)}>
             {compose ? "Close" : "Begin a book"}
@@ -56,6 +57,11 @@ function LibraryPage() {
           </InView>
         ))}
       </div>
+      {books.length === 0 ? (
+        <div className="mx-auto mt-8 max-w-6xl px-5 md:px-10">
+          <EmptyRoom line="The stacks are empty." />
+        </div>
+      ) : null}
     </MuseumShell>
   );
 }

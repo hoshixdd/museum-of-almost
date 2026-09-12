@@ -8,6 +8,7 @@
   --color-paper-dim: #f3e0cc;
   --color-gold: #e8898a;
   --color-gold-dim: #d06f72;
+  --color-rust: #8f3e41;
   --color-mist: #b9a79c;
   --color-fog: #dccfc4;
   --color-ash: #3a302b;
@@ -85,6 +86,16 @@
   textarea,
   select {
     font-family: inherit;
+    color-scheme: dark;
+  }
+
+  .input-paper {
+    color-scheme: light;
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-gold) 80%, white);
+    outline-offset: 3px;
   }
 }
 

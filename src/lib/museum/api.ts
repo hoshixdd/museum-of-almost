@@ -10,20 +10,29 @@ import {
   MEMORY_CATEGORIES,
   VOICE_CATEGORIES,
 } from "./constants";
-import { clampYear, moderateText, sanitizeLocation } from "./moderate";
+import {
+  clampYear,
+  localHourFromOffset,
+  moderateAdvice,
+  moderateText,
+  sanitizeLocation,
+} from "./moderate";
+import { allowRate, codesMatch, getVisitorId, issueCode } from "./visitor.server";
 import type {
   AlmostLife,
   Book,
   Capsule,
   CuratorReply,
-  MapPoint,
+  EmotionMap,
   Memory,
   MuseumStats,
   Voice,
   WallPost,
+  WriteResult,
 } from "./types";
 
-const HIDE_AFTER = 3;
+const HIDE_AFTER = 5;
+const LIST_LIMIT = 60;
 let seeded = false;
 let aiWindowStart = 0;
 let aiCalls = 0;
@@ -53,26 +62,46 @@ function allowAi() {
   return true;
 }
 
-function accessCode() {
-  return `MUSEUM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+async function busy(action: string, limit: number): Promise<WriteResult | null> {
+  const ok = await allowRate(action, limit);
+  if (ok) return null;
+  return { ok: false, error: "The desk is busy. Please wait a little before trying again." };
+}
+
+function failMod(check: { ok: false; reason: string; crisis?: boolean }): WriteResult {
+  return { ok: false, error: check.reason, crisis: check.crisis };
 }
 
 async function ensureSeed() {
   if (seeded) return;
   const sql = await getSql();
-  const rows = await sql<{ n: number }>`select count(*)::int as n from memories`;
-  if (num(rows[0]?.n) > 0) {
+  const existing = await sql<{ n: number }>`select count(*)::int as n from memories`;
+  if (num(existing[0]?.n) > 0) {
     seeded = true;
     return;
   }
+  try {
+    const flag = await sql<{ key: string }>`
+      insert into museum_meta (key, value) values ('seeded', '1')
+      on conflict (key) do nothing
+      returning key
+    `;
+    if (!flag[0]) {
+      seeded = true;
+      return;
+    }
+  } catch {
+    /* museum_meta may not exist yet on a brand-new migrate; continue seeding */
+  }
   const data = await import("./seed-data.server");
   for (const item of data.SEED_MEMORIES) {
+    const hour = new Date(item.created).getUTCHours();
     await sql`
       insert into memories (
-        title, content, category, emotion, year, location, anonymous_id, created_at, is_seed, views
+        title, content, category, emotion, year, location, anonymous_id, created_at, is_seed, views, local_hour
       ) values (
         ${item.title}, ${item.content}, ${item.category}, ${item.emotion}, ${item.year},
-        ${item.location}, ${"seed"}, ${item.created}, ${true}, ${Math.floor(Math.random() * 40)}
+        ${item.location}, ${"seed"}, ${item.created}, ${true}, ${Math.floor(Math.random() * 40)}, ${hour}
       )
     `;
   }
@@ -108,7 +137,7 @@ async function ensureSeed() {
         title, chapter_before, chapter_moment, chapter_change, chapter_after, edit_code, anonymous_id, is_seed
       ) values (
         ${item.title}, ${item.chapterBefore}, ${item.chapterMoment}, ${item.chapterChange},
-        ${item.chapterAfter}, ${accessCode()}, ${"seed"}, ${true}
+        ${item.chapterAfter}, ${issueCode()}, ${"seed"}, ${true}
       )
     `;
   }
@@ -200,7 +229,7 @@ function mapCapsule(row: Record<string, unknown>, reveal: boolean): Capsule {
     content: locked || (!reveal && privacy === "private") ? null : String(row.content),
     unlockAt,
     privacy,
-    recipient: row.recipient as Capsule["recipient"],
+    recipient: privacy === "private" && !reveal ? "sealed" : (row.recipient as Capsule["recipient"]),
     createdAt: iso(row.created_at),
     locked,
     opened: bool(row.opened),
@@ -228,7 +257,8 @@ export const getMuseumStats = createServerFn({ method: "GET" }).handler(async ()
   };
   const stats: MuseumStats = {
     ...counts,
-    artifacts: counts.memories + counts.lives + counts.voices + counts.books + counts.wall,
+    artifacts:
+      counts.memories + counts.lives + counts.capsules + counts.voices + counts.books + counts.wall,
   };
   return stats;
 });
@@ -240,7 +270,7 @@ const listMemoriesInput = z.object({
   query: z.string().optional(),
   midnight: z.boolean().optional(),
   forgotten: z.boolean().optional(),
-  favoritesOnly: z.array(z.number()).optional(),
+  favoritesOnly: z.array(z.number()).max(80).optional(),
 });
 
 export const listMemories = createServerFn({ method: "GET" })
@@ -249,7 +279,9 @@ export const listMemories = createServerFn({ method: "GET" })
     await ensureSeed();
     const sql = await getSql();
     let rows = await sql<Record<string, unknown>>`
-      select * from memories where hidden = false order by created_at desc
+      select id, title, left(content, 320) as content, category, emotion, year, location,
+             created_at, views, needed_count, understand_count, reminded_count, local_hour
+      from memories where hidden = false order by created_at desc limit ${LIST_LIMIT * 2}
     `;
     if (data.category) rows = rows.filter((row) => row.category === data.category);
     if (data.emotion) rows = rows.filter((row) => row.emotion === data.emotion);
@@ -265,15 +297,20 @@ export const listMemories = createServerFn({ method: "GET" })
     }
     if (data.midnight) {
       rows = rows.filter((row) => {
-        const hour = new Date(iso(row.created_at)).getUTCHours();
-        return hour < 5;
+        const hour = row.local_hour == null ? null : num(row.local_hour);
+        return hour != null && hour < 5;
       });
     }
     if (data.forgotten) {
       const month = new Date().getUTCMonth();
       rows = rows
         .slice()
-        .sort((a, b) => num(a.views) - num(b.views) || num(a.id) - num(b.id))
+        .sort(
+          (a, b) =>
+            num(a.needed_count) + num(a.understand_count) - (num(b.needed_count) + num(b.understand_count)) ||
+            num(a.views) - num(b.views) ||
+            num(a.id) - num(b.id),
+        )
         .filter((_, index) => (index + month) % 3 !== 0)
         .slice(0, 8);
     }
@@ -281,7 +318,7 @@ export const listMemories = createServerFn({ method: "GET" })
       const ids = new Set(data.favoritesOnly);
       rows = rows.filter((row) => ids.has(num(row.id)));
     }
-    return rows.map(mapMemory);
+    return rows.slice(0, LIST_LIMIT).map(mapMemory);
   });
 
 export const getMemory = createServerFn({ method: "GET" })
@@ -289,21 +326,24 @@ export const getMemory = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await ensureSeed();
     const sql = await getSql();
-    await sql`update memories set views = views + 1 where id = ${data.id} and hidden = false`;
     const rows = await sql<Record<string, unknown>>`
       select * from memories where id = ${data.id} and hidden = false
     `;
     return rows[0] ? mapMemory(rows[0]) : null;
   });
 
-export const getRandomMemory = createServerFn({ method: "GET" }).handler(async () => {
-  await ensureSeed();
-  const sql = await getSql();
-  const rows = await sql<Record<string, unknown>>`
-    select * from memories where hidden = false order by random() limit 1
-  `;
-  return rows[0] ? mapMemory(rows[0]) : null;
-});
+export const getRandomMemory = createServerFn({ method: "GET" })
+  .validator((input: unknown) => z.object({ exclude: z.array(z.number()).max(24).optional() }).parse(input ?? {}))
+  .handler(async ({ data }) => {
+    await ensureSeed();
+    const sql = await getSql();
+    const rows = await sql<Record<string, unknown>>`
+      select * from memories where hidden = false order by random() limit 16
+    `;
+    const skip = new Set(data.exclude ?? []);
+    const picked = rows.find((row) => !skip.has(num(row.id))) ?? rows[0];
+    return picked ? mapMemory(picked) : null;
+  });
 
 export const createMemory = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
@@ -314,22 +354,26 @@ export const createMemory = createServerFn({ method: "POST" })
       emotion: z.enum(EMOTIONS),
       year: z.number().optional(),
       location: z.string().optional(),
-      anonymousId: z.string().max(40).optional(),
+      offsetMinutes: z.number().optional(),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
     const check = moderateText(`${data.title}\n${data.content}`);
-    if (!check.ok) return { ok: false as const, error: check.reason };
+    if (!check.ok) return failMod(check);
     const sql = await getSql();
+    const code = issueCode();
+    const hour = localHourFromOffset(data.offsetMinutes);
     const rows = await sql<{ id: number }>`
-      insert into memories (title, content, category, emotion, year, location, anonymous_id)
+      insert into memories (title, content, category, emotion, year, location, anonymous_id, delete_code, local_hour)
       values (
         ${data.title.trim()}, ${data.content.trim()}, ${data.category}, ${data.emotion},
-        ${clampYear(data.year)}, ${sanitizeLocation(data.location)}, ${data.anonymousId ?? "anonymous"}
+        ${clampYear(data.year)}, ${sanitizeLocation(data.location)}, ${getVisitorId()}, ${code}, ${hour}
       )
       returning id
     `;
-    return { ok: true as const, id: rows[0].id };
+    return { ok: true, id: rows[0].id, deleteCode: code };
   });
 
 export const listLives = createServerFn({ method: "GET" })
@@ -338,7 +382,9 @@ export const listLives = createServerFn({ method: "GET" })
     await ensureSeed();
     const sql = await getSql();
     let rows = await sql<Record<string, unknown>>`
-      select * from almost_lives where hidden = false order by created_at desc
+      select id, title, left(story, 320) as story, category, age, location, career, relationship, dream,
+             created_at, views, needed_count, understand_count, reminded_count
+      from almost_lives where hidden = false order by created_at desc limit ${LIST_LIMIT}
     `;
     if (data.category) rows = rows.filter((row) => row.category === data.category);
     return rows.map(mapLife);
@@ -349,7 +395,6 @@ export const getLife = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await ensureSeed();
     const sql = await getSql();
-    await sql`update almost_lives set views = views + 1 where id = ${data.id} and hidden = false`;
     const rows = await sql<Record<string, unknown>>`
       select * from almost_lives where id = ${data.id} and hidden = false
     `;
@@ -367,32 +412,36 @@ export const createLife = createServerFn({ method: "POST" })
       career: z.string().max(120).optional(),
       relationship: z.string().max(160).optional(),
       dream: z.string().max(200).optional(),
-      anonymousId: z.string().max(40).optional(),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
-    const check = moderateText(`${data.title}\n${data.story}`);
-    if (!check.ok) return { ok: false as const, error: check.reason };
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
+    const check = moderateText(
+      `${data.title}\n${data.story}\n${data.career ?? ""}\n${data.relationship ?? ""}\n${data.dream ?? ""}`,
+    );
+    if (!check.ok) return failMod(check);
     const sql = await getSql();
+    const code = issueCode();
     const rows = await sql<{ id: number }>`
       insert into almost_lives (
-        title, story, category, age, location, career, relationship, dream, anonymous_id
+        title, story, category, age, location, career, relationship, dream, anonymous_id, delete_code
       ) values (
         ${data.title.trim()}, ${data.story.trim()}, ${data.category}, ${data.age ?? null},
         ${sanitizeLocation(data.location)}, ${data.career?.trim() || null},
         ${data.relationship?.trim() || null}, ${data.dream?.trim() || null},
-        ${data.anonymousId ?? "anonymous"}
+        ${getVisitorId()}, ${code}
       )
       returning id
     `;
-    return { ok: true as const, id: rows[0].id };
+    return { ok: true, id: rows[0].id, deleteCode: code };
   });
 
 export const listCapsules = createServerFn({ method: "GET" }).handler(async () => {
   await ensureSeed();
   const sql = await getSql();
   const rows = await sql<Record<string, unknown>>`
-    select * from capsules where hidden = false order by unlock_at asc
+    select * from capsules where hidden = false order by unlock_at asc limit ${LIST_LIMIT}
   `;
   return rows.map((row) => mapCapsule(row, false));
 });
@@ -413,7 +462,7 @@ export const getCapsule = createServerFn({ method: "GET" })
     const locked = new Date(iso(row.unlock_at)).getTime() > Date.now();
     if (privacy === "private") {
       const code = String(row.access_code ?? "");
-      if (!data.accessCode || data.accessCode !== code) {
+      if (!codesMatch(code, data.accessCode ?? "")) {
         return { ok: true as const, capsule: mapCapsule(row, false) };
       }
     }
@@ -431,27 +480,29 @@ export const createCapsule = createServerFn({ method: "POST" })
       unlockAt: z.string().min(8),
       privacy: z.enum(["public", "private"]),
       recipient: z.enum(CAPSULE_RECIPIENTS),
-      anonymousId: z.string().max(40).optional(),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
     const check = moderateText(`${data.title}\n${data.content}`);
-    if (!check.ok) return { ok: false as const, error: check.reason };
+    if (!check.ok) return failMod(check);
     const unlock = new Date(data.unlockAt);
     if (Number.isNaN(unlock.getTime()) || unlock.getTime() < Date.now() + 60_000) {
-      return { ok: false as const, error: "Choose an unlock date in the future." };
+      return { ok: false, error: "Choose an unlock date in the future." };
     }
-    const code = data.privacy === "private" ? accessCode() : null;
+    const code = data.privacy === "private" ? issueCode() : issueCode();
+    const access = data.privacy === "private" ? issueCode() : null;
     const sql = await getSql();
     const rows = await sql<{ id: number }>`
-      insert into capsules (title, content, unlock_at, privacy, recipient, access_code, anonymous_id)
+      insert into capsules (title, content, unlock_at, privacy, recipient, access_code, anonymous_id, delete_code)
       values (
         ${data.title.trim()}, ${data.content.trim()}, ${unlock.toISOString()}, ${data.privacy},
-        ${data.recipient}, ${code}, ${data.anonymousId ?? "anonymous"}
+        ${data.recipient}, ${access}, ${getVisitorId()}, ${code}
       )
       returning id
     `;
-    return { ok: true as const, id: rows[0].id, accessCode: code };
+    return { ok: true, id: rows[0].id, deleteCode: code, accessCode: access };
   });
 
 export const listVoices = createServerFn({ method: "GET" })
@@ -460,7 +511,8 @@ export const listVoices = createServerFn({ method: "GET" })
     await ensureSeed();
     const sql = await getSql();
     let rows = await sql<Record<string, unknown>>`
-      select * from voices where hidden = false order by created_at desc
+      select id, title, left(transcript, 320) as transcript, category, duration_sec, created_at, listens, needed_count
+      from voices where hidden = false order by created_at desc limit ${LIST_LIMIT}
     `;
     if (data.category) rows = rows.filter((row) => row.category === data.category);
     return rows.map(mapVoice);
@@ -471,7 +523,6 @@ export const getVoice = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await ensureSeed();
     const sql = await getSql();
-    await sql`update voices set listens = listens + 1 where id = ${data.id} and hidden = false`;
     const rows = await sql<Record<string, unknown>>`
       select * from voices where id = ${data.id} and hidden = false
     `;
@@ -484,30 +535,33 @@ export const createVoice = createServerFn({ method: "POST" })
       title: z.string().min(2).max(120),
       transcript: z.string().min(8).max(4000),
       category: z.enum(VOICE_CATEGORIES),
-      anonymousId: z.string().max(40).optional(),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
     const check = moderateText(`${data.title}\n${data.transcript}`);
-    if (!check.ok) return { ok: false as const, error: check.reason };
+    if (!check.ok) return failMod(check);
     const sql = await getSql();
     const duration = estimateSpeechSeconds(data.transcript);
+    const code = issueCode();
     const rows = await sql<{ id: number }>`
-      insert into voices (title, transcript, category, duration_sec, anonymous_id)
+      insert into voices (title, transcript, category, duration_sec, anonymous_id, delete_code)
       values (
         ${data.title.trim()}, ${data.transcript.trim()}, ${data.category}, ${duration},
-        ${data.anonymousId ?? "anonymous"}
+        ${getVisitorId()}, ${code}
       )
       returning id
     `;
-    return { ok: true as const, id: rows[0].id };
+    return { ok: true, id: rows[0].id, deleteCode: code };
   });
 
 export const listBooks = createServerFn({ method: "GET" }).handler(async () => {
   await ensureSeed();
   const sql = await getSql();
   const rows = await sql<Record<string, unknown>>`
-    select * from books where hidden = false order by created_at desc
+    select id, title, chapter_before, chapter_moment, chapter_change, chapter_after, created_at, views
+    from books where hidden = false order by created_at desc limit ${LIST_LIMIT}
   `;
   return rows.map((row) => mapBook(row));
 });
@@ -519,13 +573,12 @@ export const getBook = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await ensureSeed();
     const sql = await getSql();
-    await sql`update books set views = views + 1 where id = ${data.id} and hidden = false`;
     const rows = await sql<Record<string, unknown>>`
       select * from books where id = ${data.id} and hidden = false
     `;
     const row = rows[0];
     if (!row) return null;
-    const canEdit = Boolean(data.editCode && data.editCode === String(row.edit_code));
+    const canEdit = codesMatch(String(row.edit_code ?? ""), data.editCode ?? "");
     return mapBook(row, canEdit);
   });
 
@@ -537,16 +590,23 @@ export const createBook = createServerFn({ method: "POST" })
       chapterMoment: z.string().max(2000).optional(),
       chapterChange: z.string().max(2000).optional(),
       chapterAfter: z.string().max(2000).optional(),
-      anonymousId: z.string().max(40).optional(),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
+    const chapters = [data.chapterBefore, data.chapterMoment, data.chapterChange, data.chapterAfter].filter(
+      (part) => (part ?? "").trim().length >= 8,
+    );
+    if (chapters.length < 2) {
+      return { ok: false, error: "Write at least two chapters before placing the book." };
+    }
     const body = [data.title, data.chapterBefore, data.chapterMoment, data.chapterChange, data.chapterAfter]
       .filter(Boolean)
       .join("\n");
     const check = moderateText(body);
-    if (!check.ok) return { ok: false as const, error: check.reason };
-    const code = accessCode();
+    if (!check.ok) return failMod(check);
+    const code = issueCode();
     const sql = await getSql();
     const rows = await sql<{ id: number }>`
       insert into books (
@@ -554,11 +614,11 @@ export const createBook = createServerFn({ method: "POST" })
       ) values (
         ${data.title.trim()}, ${data.chapterBefore?.trim() ?? ""}, ${data.chapterMoment?.trim() ?? ""},
         ${data.chapterChange?.trim() ?? ""}, ${data.chapterAfter?.trim() ?? ""}, ${code},
-        ${data.anonymousId ?? "anonymous"}
+        ${getVisitorId()}
       )
       returning id
     `;
-    return { ok: true as const, id: rows[0].id, editCode: code };
+    return { ok: true, id: rows[0].id, editCode: code, deleteCode: code };
   });
 
 export const updateBook = createServerFn({ method: "POST" })
@@ -577,7 +637,7 @@ export const updateBook = createServerFn({ method: "POST" })
     const check = moderateText(
       `${data.title}\n${data.chapterBefore}\n${data.chapterMoment}\n${data.chapterChange}\n${data.chapterAfter}`,
     );
-    if (!check.ok) return { ok: false as const, error: check.reason };
+    if (!check.ok) return { ok: false as const, error: check.reason, crisis: check.crisis };
     const sql = await getSql();
     const rows = await sql<{ id: number }>`
       update books
@@ -597,7 +657,7 @@ export const listWall = createServerFn({ method: "GET" }).handler(async () => {
   await ensureSeed();
   const sql = await getSql();
   const posts = await sql<Record<string, unknown>>`
-    select * from wall_posts where hidden = false order by created_at desc
+    select * from wall_posts where hidden = false order by created_at desc limit 40
   `;
   const replies = await sql<Record<string, unknown>>`
     select * from replies where hidden = false order by created_at asc
@@ -606,6 +666,7 @@ export const listWall = createServerFn({ method: "GET" }).handler(async () => {
   for (const reply of replies) {
     const wallId = num(reply.wall_id);
     const list = grouped.get(wallId) ?? [];
+    if (list.length >= 12) continue;
     list.push({ id: num(reply.id), content: String(reply.content), createdAt: iso(reply.created_at) });
     grouped.set(wallId, list);
   }
@@ -624,19 +685,21 @@ export const createWallPost = createServerFn({ method: "POST" })
     z.object({
       content: z.string().min(8).max(500),
       emotion: z.enum(EMOTIONS).optional(),
-      anonymousId: z.string().max(40).optional(),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
-    const check = moderateText(data.content);
-    if (!check.ok) return { ok: false as const, error: check.reason };
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
+    const check = moderateText(data.content, { min: 8, max: 500 });
+    if (!check.ok) return failMod(check);
     const sql = await getSql();
+    const code = issueCode();
     const rows = await sql<{ id: number }>`
-      insert into wall_posts (content, emotion, anonymous_id)
-      values (${data.content.trim()}, ${data.emotion ?? null}, ${data.anonymousId ?? "anonymous"})
+      insert into wall_posts (content, emotion, anonymous_id, delete_code)
+      values (${data.content.trim()}, ${data.emotion ?? null}, ${getVisitorId()}, ${code})
       returning id
     `;
-    return { ok: true as const, id: rows[0].id };
+    return { ok: true, id: rows[0].id, deleteCode: code };
   });
 
 export const createReply = createServerFn({ method: "POST" })
@@ -647,36 +710,38 @@ export const createReply = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data }) => {
-    const check = moderateText(data.content);
-    if (!check.ok) return { ok: false as const, error: check.reason };
-    const lowered = data.content.toLowerCase();
-    const blocked = ["should", "just get over", "idiot", "stupid", "kill yourself"];
-    if (blocked.some((word) => lowered.includes(word))) {
-      return {
-        ok: false as const,
-        error: "This wall is for recognition, not advice or judgment. Try a quieter sentence.",
-      };
-    }
+    const limited = await busy("reply", 16);
+    if (limited) return limited;
+    const check = moderateAdvice(data.content);
+    if (!check.ok) return { ok: false as const, error: check.reason, crisis: check.crisis };
     const sql = await getSql();
+    const parent = await sql<{ id: number }>`
+      select id from wall_posts where id = ${data.wallId} and hidden = false
+    `;
+    if (!parent[0]) return { ok: false as const, error: "That note is no longer on the wall." };
     await sql`insert into replies (wall_id, content) values (${data.wallId}, ${data.content.trim()})`;
     return { ok: true as const };
   });
 
 export const createExitNote = createServerFn({ method: "POST" })
-  .validator((input: unknown) => z.object({ content: z.string().min(4).max(400) }).parse(input))
-  .handler(async ({ data }) => {
-    const check = moderateText(data.content);
-    if (!check.ok) return { ok: false as const, error: check.reason };
+  .validator((input: unknown) => z.object({ content: z.string().min(8).max(400) }).parse(input))
+  .handler(async ({ data }): Promise<WriteResult> => {
+    const limited = await busy("write", 6);
+    if (limited) return limited;
+    const check = moderateText(data.content, { min: 8, max: 400 });
+    if (!check.ok) return failMod(check);
     const sql = await getSql();
-    await sql`insert into exit_notes (content) values (${data.content.trim()})`;
-    return { ok: true as const };
+    const rows = await sql<{ id: number }>`
+      insert into exit_notes (content) values (${data.content.trim()}) returning id
+    `;
+    return { ok: true, id: rows[0].id };
   });
 
 export const listExitNotes = createServerFn({ method: "GET" }).handler(async () => {
   await ensureSeed();
   const sql = await getSql();
   const rows = await sql<{ id: number; content: string; created_at: unknown }>`
-    select id, content, created_at from exit_notes order by created_at desc limit 24
+    select id, content, created_at from exit_notes where hidden = false order by created_at desc limit 24
   `;
   return rows.map((row) => ({
     id: num(row.id),
@@ -694,24 +759,28 @@ export const reactTo = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data }) => {
+    const limited = await busy("react", 40);
+    if (limited) return { ok: false as const };
+    const visitorId = getVisitorId();
     const sql = await getSql();
-    const column =
-      data.reaction === "needed"
-        ? "needed_count"
-        : data.reaction === "understand"
-          ? "understand_count"
-          : "reminded_count";
+    const inserted = await sql<{ visitor_id: string }>`
+      insert into visitor_reactions (visitor_id, kind, content_id, reaction)
+      values (${visitorId}, ${data.kind}, ${data.id}, ${data.reaction})
+      on conflict (visitor_id, kind, content_id, reaction) do nothing
+      returning visitor_id
+    `;
+    if (!inserted[0]) return { ok: true as const };
     if (data.kind === "memory") {
-      if (column === "needed_count") await sql`update memories set needed_count = needed_count + 1 where id = ${data.id}`;
-      if (column === "understand_count") await sql`update memories set understand_count = understand_count + 1 where id = ${data.id}`;
-      if (column === "reminded_count") await sql`update memories set reminded_count = reminded_count + 1 where id = ${data.id}`;
+      if (data.reaction === "needed") await sql`update memories set needed_count = needed_count + 1 where id = ${data.id}`;
+      if (data.reaction === "understand") await sql`update memories set understand_count = understand_count + 1 where id = ${data.id}`;
+      if (data.reaction === "reminded") await sql`update memories set reminded_count = reminded_count + 1 where id = ${data.id}`;
     } else if (data.kind === "life") {
-      if (column === "needed_count") await sql`update almost_lives set needed_count = needed_count + 1 where id = ${data.id}`;
-      if (column === "understand_count") await sql`update almost_lives set understand_count = understand_count + 1 where id = ${data.id}`;
-      if (column === "reminded_count") await sql`update almost_lives set reminded_count = reminded_count + 1 where id = ${data.id}`;
-    } else if (data.kind === "voice" && column === "needed_count") {
+      if (data.reaction === "needed") await sql`update almost_lives set needed_count = needed_count + 1 where id = ${data.id}`;
+      if (data.reaction === "understand") await sql`update almost_lives set understand_count = understand_count + 1 where id = ${data.id}`;
+      if (data.reaction === "reminded") await sql`update almost_lives set reminded_count = reminded_count + 1 where id = ${data.id}`;
+    } else if (data.kind === "voice" && data.reaction === "needed") {
       await sql`update voices set needed_count = needed_count + 1 where id = ${data.id}`;
-    } else if (data.kind === "wall" && column === "understand_count") {
+    } else if (data.kind === "wall" && data.reaction === "understand") {
       await sql`update wall_posts set understand_count = understand_count + 1 where id = ${data.id}`;
     }
     return { ok: true as const };
@@ -720,38 +789,95 @@ export const reactTo = createServerFn({ method: "POST" })
 export const reportContent = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
     z.object({
-      kind: z.enum(["memory", "life", "voice", "book", "wall", "capsule"]),
+      kind: z.enum(["memory", "life", "voice", "book", "wall", "capsule", "exit", "reply"]),
       id: z.number(),
       reason: z.string().min(2).max(80),
     }).parse(input),
   )
   .handler(async ({ data }) => {
+    const limited = await busy("report", 8);
+    if (limited && !limited.ok) return { ok: false as const, error: limited.error };
+    const visitorId = getVisitorId();
     const sql = await getSql();
-    await sql`insert into reports (content_type, content_id, reason) values (${data.kind}, ${data.id}, ${data.reason})`;
-    const table =
-      data.kind === "memory"
-        ? "memories"
-        : data.kind === "life"
-          ? "almost_lives"
-          : data.kind === "voice"
-            ? "voices"
-            : data.kind === "book"
-              ? "books"
-              : data.kind === "capsule"
-                ? "capsules"
-                : "wall_posts";
-    if (table === "memories") {
-      await sql`update memories set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
-    } else if (table === "almost_lives") {
-      await sql`update almost_lives set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
-    } else if (table === "voices") {
-      await sql`update voices set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
-    } else if (table === "books") {
-      await sql`update books set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
-    } else if (table === "capsules") {
-      await sql`update capsules set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    const inserted = await sql<{ id: number }>`
+      insert into reports (content_type, content_id, reason, visitor_id)
+      values (${data.kind}, ${data.id}, ${data.reason}, ${visitorId})
+      on conflict (visitor_id, content_type, content_id) do nothing
+      returning id
+    `;
+    if (!inserted[0]) return { ok: true as const };
+    if (data.kind === "memory") {
+      await sql`update memories set report_count = report_count + 1, hidden = case when is_seed = false and report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    } else if (data.kind === "life") {
+      await sql`update almost_lives set report_count = report_count + 1, hidden = case when is_seed = false and report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    } else if (data.kind === "voice") {
+      await sql`update voices set report_count = report_count + 1, hidden = case when is_seed = false and report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    } else if (data.kind === "book") {
+      await sql`update books set report_count = report_count + 1, hidden = case when is_seed = false and report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    } else if (data.kind === "capsule") {
+      await sql`update capsules set report_count = report_count + 1, hidden = case when is_seed = false and report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    } else if (data.kind === "wall") {
+      await sql`update wall_posts set report_count = report_count + 1, hidden = case when is_seed = false and report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    } else if (data.kind === "exit") {
+      await sql`update exit_notes set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
     } else {
-      await sql`update wall_posts set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+      await sql`update replies set report_count = report_count + 1, hidden = case when report_count + 1 >= ${HIDE_AFTER} then true else hidden end where id = ${data.id}`;
+    }
+    return { ok: true as const };
+  });
+
+export const shredArtifact = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z.object({
+      kind: z.enum(["memory", "life", "voice", "book", "wall", "capsule"]),
+      id: z.number(),
+      code: z.string().min(4).max(80),
+    }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const sql = await getSql();
+    if (data.kind === "memory") {
+      const rows = await sql<{ id: number }>`
+        update memories set hidden = true
+        where id = ${data.id} and delete_code = ${data.code} and is_seed = false
+        returning id
+      `;
+      if (!rows[0]) return { ok: false as const, error: "That claim slip does not match this letter." };
+    } else if (data.kind === "life") {
+      const rows = await sql<{ id: number }>`
+        update almost_lives set hidden = true
+        where id = ${data.id} and delete_code = ${data.code} and is_seed = false
+        returning id
+      `;
+      if (!rows[0]) return { ok: false as const, error: "That claim slip does not match this life." };
+    } else if (data.kind === "voice") {
+      const rows = await sql<{ id: number }>`
+        update voices set hidden = true
+        where id = ${data.id} and delete_code = ${data.code} and is_seed = false
+        returning id
+      `;
+      if (!rows[0]) return { ok: false as const, error: "That claim slip does not match this voice." };
+    } else if (data.kind === "book") {
+      const rows = await sql<{ id: number }>`
+        update books set hidden = true
+        where id = ${data.id} and edit_code = ${data.code} and is_seed = false
+        returning id
+      `;
+      if (!rows[0]) return { ok: false as const, error: "That library card does not match this book." };
+    } else if (data.kind === "wall") {
+      const rows = await sql<{ id: number }>`
+        update wall_posts set hidden = true
+        where id = ${data.id} and delete_code = ${data.code} and is_seed = false
+        returning id
+      `;
+      if (!rows[0]) return { ok: false as const, error: "That claim slip does not match this note." };
+    } else {
+      const rows = await sql<{ id: number }>`
+        update capsules set hidden = true
+        where id = ${data.id} and delete_code = ${data.code} and is_seed = false
+        returning id
+      `;
+      if (!rows[0]) return { ok: false as const, error: "That claim slip does not match this capsule." };
     }
     return { ok: true as const };
   });
@@ -765,13 +891,62 @@ export const getEmotionMap = createServerFn({ method: "GET" }).handler(async () 
     where hidden = false and location is not null and location <> ''
     group by location
   `;
-  const counts = new Map(rows.map((row) => [row.location.toLowerCase(), num(row.n)]));
-  const points: MapPoint[] = MAP_CITIES.map((city) => ({
+  const lifeRows = await sql<{ location: string; n: number }>`
+    select location, count(*)::int as n
+    from almost_lives
+    where hidden = false and location is not null and location <> ''
+    group by location
+  `;
+  const counts = new Map<string, number>();
+  for (const row of [...rows, ...lifeRows]) {
+    const key = row.location.toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + num(row.n));
+  }
+  const known = new Set(MAP_CITIES.map((city) => city.city.toLowerCase()));
+  const points = MAP_CITIES.map((city) => ({
     ...city,
     count: counts.get(city.city.toLowerCase()) ?? 0,
-  })).filter((point) => point.count > 0);
-  return points;
+  }));
+  const unplaced = [...counts.entries()]
+    .filter(([city]) => !known.has(city))
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 24);
+  const result: EmotionMap = { points, unplaced };
+  return result;
 });
+
+async function curatorFallback(message: string): Promise<CuratorReply> {
+  const sql = await getSql();
+  const q = message.toLowerCase();
+  const emotion = EMOTIONS.find((item) => q.includes(item.toLowerCase()));
+  const rows = await sql<Record<string, unknown>>`
+    select id, title, emotion, category, location, left(content, 160) as content
+    from memories where hidden = false order by created_at desc limit 40
+  `;
+  const scored = rows
+    .map((row) => {
+      const hay = `${row.title} ${row.content} ${row.emotion} ${row.category} ${row.location ?? ""}`.toLowerCase();
+      let score = 0;
+      for (const word of q.split(/\s+/).filter((part) => part.length > 3)) {
+        if (hay.includes(word)) score += 1;
+      }
+      if (emotion && String(row.emotion) === emotion) score += 3;
+      return { row, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  const matches = scored.slice(0, 3).map(({ row }) => ({
+    kind: "memory" as const,
+    id: num(row.id),
+    title: String(row.title),
+    href: `/archive/${num(row.id)}`,
+  }));
+  return {
+    ok: true,
+    text: "I am only an attendant, not a doctor. Here are a few rooms that sit beside what you described. Stay as long as you need.",
+    matches,
+  };
+}
 
 export const askCurator = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
@@ -781,13 +956,23 @@ export const askCurator = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data }): Promise<CuratorReply> => {
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) return { ok: false, error: "The Curator is away from the desk just now." };
-    if (!allowAi()) return { ok: false, error: "The Curator is attending other visitors. Please try again shortly." };
+    const limited = await busy("curator", 10);
+    if (limited && !limited.ok) return { ok: false, error: limited.error };
+    const safety = moderateText(data.message, { min: 2, max: 500 });
+    if (!safety.ok && safety.crisis) {
+      return {
+        ok: true,
+        text: "If you are in danger, please contact local emergency services or Find a Helpline. I cannot intervene, and I am not a counselor. If you still want a quiet story to sit with, I can look — after you are safe.",
+        matches: [],
+      };
+    }
     await ensureSeed();
+    const apiKey = process.env.XAI_API_KEY;
+    if (!apiKey || !allowAi()) return curatorFallback(data.message);
     const sql = await getSql();
     const memories = await sql<Record<string, unknown>>`
-      select id, title, category, emotion, location, content from memories where hidden = false order by random() limit 18
+      select id, title, category, emotion, location, left(content, 110) as content
+      from memories where hidden = false order by random() limit 18
     `;
     const catalog = memories
       .map((row) => {
@@ -823,10 +1008,10 @@ export const askCurator = createServerFn({ method: "POST" })
         ],
       }),
     });
-    if (!res.ok) return { ok: false, error: "The Curator could not be reached." };
+    if (!res.ok) return curatorFallback(data.message);
     const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const text = body.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!text) return { ok: false, error: "The Curator was silent." };
+    if (!text) return curatorFallback(data.message);
     const matchLine = text.match(/MATCHES:\s*([^\n]+)/i);
     const spoken = text.replace(/\n*MATCHES:\s*[^\n]+/i, "").trim();
     const ids = (matchLine?.[1] ?? "")
@@ -859,6 +1044,8 @@ export const reflectOnWriting = createServerFn({ method: "POST" })
     const fallback = "You preserved something meaningful. It will sit here without being ranked.";
     const apiKey = process.env.XAI_API_KEY;
     if (!apiKey || !allowAi()) return { text: fallback };
+    const limited = await allowRate("reflect", 12);
+    if (!limited) return { text: fallback };
     const res = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {

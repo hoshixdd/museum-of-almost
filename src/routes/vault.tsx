@@ -6,6 +6,7 @@ import { RoomHeader } from "@/components/museum/room-header";
 import { CapsuleForm } from "@/components/museum/forms";
 import { GhostButton } from "@/components/museum/fields";
 import { InView } from "@/components/museum/motion";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { listCapsules } from "@/lib/museum/api";
 import { catalogNumber } from "@/lib/utils";
 
@@ -55,13 +56,20 @@ function VaultPage() {
               </div>
               <h2 className="mt-4 font-display text-2xl">{capsule.title}</h2>
               <p className="mt-3 text-sm text-mist">
-                For {capsule.recipient.toLowerCase()} · {capsule.privacy} ·{" "}
-                {capsule.locked ? `opens ${new Date(capsule.unlockAt).toLocaleDateString()}` : "open"}
+                {capsule.privacy === "private"
+                  ? "A sealed hour"
+                  : `For ${String(capsule.recipient).toLowerCase()}`}{" "}
+                · {capsule.locked ? `opens ${new Date(capsule.unlockAt).toLocaleDateString()}` : "open"}
               </p>
             </Link>
           </InView>
         ))}
       </div>
+      {capsules.length === 0 ? (
+        <div className="mx-auto mt-8 max-w-6xl px-5 md:px-10">
+          <EmptyRoom line="The vault is empty." />
+        </div>
+      ) : null}
     </MuseumShell>
   );
 }

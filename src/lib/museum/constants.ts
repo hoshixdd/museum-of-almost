@@ -2,6 +2,8 @@ export const APP_NAME = "The Museum of Almost";
 export const APP_TAGLINE = "A home for everything that almost happened.";
 export const APP_DESCRIPTION =
   "An anonymous digital museum of unsent letters, alternate lives, time capsules, and memories that never found a voice.";
+export const SITE_URL = "https://museum-of-almost.vercel.app";
+export const MIN_AGE = 16;
 
 export const MEMORY_CATEGORIES = [
   "Love",
@@ -59,12 +61,26 @@ export const REPORT_REASONS = [
 
 export const REACTIONS = [
   { key: "needed", label: "I needed this" },
-  { key: "understand", label: "I understand" },
-  { key: "reminded", label: "This reminded me of someone" },
+  { key: "understand", label: "same" },
+  { key: "reminded", label: "this one hurt" },
+] as const;
+
+export const DAILY_PROMPTS = [
+  "the text still sitting in Notes",
+  "the school you didn't pick",
+  "the coming-out that stayed in Drafts",
+  "the last thing you almost said in the hallway",
+  "a version of you that stayed",
+  "the apology you wrote and deleted",
+  "the city you almost moved to",
 ] as const;
 
 export const SUGGESTED_CITIES = [
   "Manila",
+  "Quezon City",
+  "Cebu",
+  "Davao",
+  "Antipolo",
   "Tokyo",
   "New York",
   "London",
@@ -84,6 +100,8 @@ export const SUGGESTED_CITIES = [
   "Dublin",
   "Barcelona",
   "Lisbon",
+  "Jakarta",
+  "Bangkok",
 ] as const;
 
 export const MAP_CITIES: {
@@ -113,10 +131,15 @@ export const MAP_CITIES: {
   { city: "Mumbai", region: "India", x: 68, y: 50 },
   { city: "Singapore", region: "Singapore", x: 76, y: 58 },
   { city: "Manila", region: "Philippines", x: 81, y: 54 },
+  { city: "Quezon City", region: "Philippines", x: 81.2, y: 53.6 },
+  { city: "Cebu", region: "Philippines", x: 80.6, y: 56 },
+  { city: "Antipolo", region: "Philippines", x: 81.4, y: 53.8 },
   { city: "Hong Kong", region: "China", x: 79, y: 48 },
   { city: "Seoul", region: "South Korea", x: 82, y: 38 },
   { city: "Tokyo", region: "Japan", x: 86, y: 38 },
   { city: "Taipei", region: "Taiwan", x: 81, y: 46 },
+  { city: "Jakarta", region: "Indonesia", x: 78, y: 62 },
+  { city: "Bangkok", region: "Thailand", x: 76, y: 52 },
   { city: "Melbourne", region: "Australia", x: 86, y: 82 },
   { city: "Brooklyn", region: "United States", x: 26.6, y: 39 },
   { city: "Boston", region: "United States", x: 27.4, y: 36.5 },
@@ -148,7 +171,7 @@ export const ROOMS = [
     slug: "voice",
     roman: "IV",
     name: "The Voice Room",
-    line: "Spoken memories, one at a time.",
+    line: "Spoken letters, read aloud in the room.",
     href: "/voice",
   },
   {
@@ -205,6 +228,18 @@ export const ANNEXES = [
     name: "The Curator",
     line: "An attendant who helps you find a story.",
     href: "/curator",
+  },
+  {
+    slug: "kept",
+    name: "Kept",
+    line: "Letters this device asked to remember.",
+    href: "/kept",
+  },
+  {
+    slug: "desk",
+    name: "Your desk",
+    line: "Claim slips for things you left. This phone only.",
+    href: "/desk",
   },
 ] as const;
 

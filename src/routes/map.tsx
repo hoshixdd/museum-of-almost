@@ -9,15 +9,18 @@ import type { MapPoint, Memory } from "@/lib/museum/types";
 
 export const Route = createFileRoute("/map")({
   loader: async () => {
-    const [points, memories] = await Promise.all([getEmotionMap(), listMemories({ data: {} })]);
-    return { points, memories };
+    const [map, memories] = await Promise.all([getEmotionMap(), listMemories({ data: {} })]);
+    return { map, memories };
   },
   component: MapPage,
 });
 
 function MapPage() {
-  const { points, memories } = Route.useLoaderData();
-  const [active, setActive] = useState<MapPoint | null>(points[0] ?? null);
+  const { map, memories } = Route.useLoaderData();
+  const points = map.points;
+  const [active, setActive] = useState<MapPoint | { city: string; region: string; count: number } | null>(
+    points.find((point) => point.count > 0) ?? points[0] ?? null,
+  );
   const stories: Memory[] = active
     ? memories.filter((item) => (item.location ?? "").toLowerCase() === active.city.toLowerCase())
     : [];
@@ -65,8 +68,17 @@ function MapPage() {
                     cy={city.y}
                     r="3.2"
                     fill="transparent"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${city.city}, ${count} memories`}
                     className="cursor-pointer"
                     onClick={() => setActive({ ...city, count })}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setActive({ ...city, count });
+                      }
+                    }}
                   />
                 </g>
               );
@@ -76,7 +88,9 @@ function MapPage() {
         <div>
           {active ? (
             <>
-              <p className="text-[11px] tracking-[0.32em] text-gold uppercase">{active.region}</p>
+              <p className="text-[11px] tracking-[0.32em] text-gold uppercase">
+                {"region" in active ? active.region : "Unplaced"}
+              </p>
               <h2 className="mt-2 font-display text-4xl">{active.city}</h2>
               <p className="mt-2 text-sm text-mist">
                 {active.count} {active.count === 1 ? "memory" : "memories"} preserved at city level.
@@ -96,6 +110,24 @@ function MapPage() {
           ) : (
             <p className="text-mist">Choose a city.</p>
           )}
+          {map.unplaced.length ? (
+            <div className="mt-10">
+              <p className="text-[11px] tracking-[0.24em] text-mist uppercase">not on the map yet</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {map.unplaced.map((city) => (
+                  <li key={city.city}>
+                    <button
+                      type="button"
+                      className="min-h-11 rounded-full px-3 text-sm text-gold shadow-[var(--shadow-border)]"
+                      onClick={() => setActive({ city: city.city, region: "Unplaced", count: city.count })}
+                    >
+                      {city.city} · {city.count}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       </div>
     </MuseumShell>

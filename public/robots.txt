@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /__grok/
 
-Sitemap: /sitemap.xml
+Sitemap: https://museum-of-almost.vercel.app/sitemap.xml

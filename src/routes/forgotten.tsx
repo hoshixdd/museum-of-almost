@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MuseumShell } from "@/components/museum/shell";
 import { RoomHeader } from "@/components/museum/room-header";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { listMemories } from "@/lib/museum/api";
 import { catalogNumber, excerpt } from "@/lib/utils";
 
@@ -11,13 +12,14 @@ export const Route = createFileRoute("/forgotten")({
 
 function ForgottenPage() {
   const memories = Route.useLoaderData();
+  const month = new Date().toLocaleString("en", { month: "long" });
 
   return (
     <MuseumShell>
       <RoomHeader
         kicker="Annex"
         title="The Forgotten Room"
-        line="A rotating exhibition of memories that have been sitting in the dark. It changes with the month."
+        line={`${month}'s neglected shelf — letters that have been sitting in the dark.`}
       />
       <div className="mx-auto grid max-w-5xl gap-8 px-5 md:grid-cols-2 md:px-10">
         {memories.map((memory) => (
@@ -28,6 +30,11 @@ function ForgottenPage() {
           </Link>
         ))}
       </div>
+      {memories.length === 0 ? (
+        <div className="mx-auto mt-8 max-w-5xl px-5 md:px-10">
+          <EmptyRoom line="Nothing is forgotten yet." />
+        </div>
+      ) : null}
     </MuseumShell>
   );
 }

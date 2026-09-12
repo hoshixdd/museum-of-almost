@@ -1,15 +1,16 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MuseumShell } from "@/components/museum/shell";
 import { Field, PrimaryButton, TextInput } from "@/components/museum/fields";
+import { Reactions } from "@/components/museum/reactions";
+import { ShareBar } from "@/components/museum/share-bar";
 import { getCapsule } from "@/lib/museum/api";
-import { getCode } from "@/lib/museum/local";
+import { getCode, rememberCode } from "@/lib/museum/local";
 import { catalogNumber } from "@/lib/utils";
 
 export const Route = createFileRoute("/vault_/$id")({
   loader: async ({ params }) => {
-    const stored = typeof window !== "undefined" ? getCode("capsule", Number(params.id)) : "";
-    const result = await getCapsule({ data: { id: Number(params.id), accessCode: stored || undefined } });
+    const result = await getCapsule({ data: { id: Number(params.id) } });
     if (!result.ok) throw notFound();
     return result.capsule;
   },
@@ -20,12 +21,32 @@ function CapsulePage() {
   const initial = Route.useLoaderData();
   const [capsule, setCapsule] = useState(initial);
   const [code, setCode] = useState("");
-  const remaining = useMemo(() => new Date(capsule.unlockAt).getTime() - Date.now(), [capsule.unlockAt]);
+  const [remaining, setRemaining] = useState(() => new Date(capsule.unlockAt).getTime() - Date.now());
+
+  useEffect(() => {
+    const stored = getCode("capsule-key", capsule.id) || getCode("capsule", capsule.id);
+    if (stored && capsule.privacy === "private" && !capsule.content) {
+      void getCapsule({ data: { id: capsule.id, accessCode: stored } }).then((result) => {
+        if (result.ok) setCapsule(result.capsule);
+      });
+    }
+  }, [capsule.id, capsule.privacy, capsule.content]);
+
+  useEffect(() => {
+    const tick = () => setRemaining(new Date(capsule.unlockAt).getTime() - Date.now());
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [capsule.unlockAt]);
+
   const locked = remaining > 0;
 
   async function unlockPrivate() {
     const result = await getCapsule({ data: { id: capsule.id, accessCode: code } });
-    if (result.ok) setCapsule(result.capsule);
+    if (result.ok) {
+      rememberCode("capsule-key", capsule.id, code, capsule.title);
+      setCapsule(result.capsule);
+    }
   }
 
   return (
@@ -37,17 +58,13 @@ function CapsulePage() {
         <p className="mt-10 text-[11px] tracking-[0.32em] text-gold uppercase">{catalogNumber("VAULT", capsule.id)}</p>
         <h1 className="mt-4 font-display text-4xl md:text-5xl">{capsule.title}</h1>
         <p className="mt-3 text-sm text-mist">
-          For {capsule.recipient.toLowerCase()} · {capsule.privacy}
+          {capsule.privacy === "private" ? "Private" : `For ${String(capsule.recipient).toLowerCase()}`}
         </p>
         {locked ? (
           <div className="mt-12 rounded-lg bg-ink-elevated px-6 py-10 text-center vault-lock">
             <p className="text-[11px] tracking-[0.3em] text-gold uppercase">Sealed</p>
-            <p className="mt-4 font-display text-3xl tabular-nums">
-              {formatCountdown(remaining)}
-            </p>
-            <p className="mt-3 text-sm text-mist">
-              Opens {new Date(capsule.unlockAt).toLocaleString()}
-            </p>
+            <p className="mt-4 font-display text-3xl tabular-nums">{formatCountdown(remaining)}</p>
+            <p className="mt-3 text-sm text-mist">Opens {new Date(capsule.unlockAt).toLocaleString()}</p>
           </div>
         ) : capsule.content ? (
           <div className="paper-sheet mt-12 px-8 py-10">
@@ -69,6 +86,8 @@ function CapsulePage() {
             <PrimaryButton>Open</PrimaryButton>
           </form>
         )}
+        <ShareBar title={capsule.title} path={`/vault/${capsule.id}`} />
+        <Reactions kind="capsule" id={capsule.id} />
       </div>
     </MuseumShell>
   );
@@ -80,5 +99,7 @@ function formatCountdown(ms: number) {
   const days = Math.floor(total / 86400);
   const hours = Math.floor((total % 86400) / 3600);
   const minutes = Math.floor((total % 3600) / 60);
-  return `${days}d ${hours}h ${minutes}m`;
+  const seconds = total % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  return `${hours}h ${minutes}m ${seconds}s`;
 }

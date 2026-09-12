@@ -1,8 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { MuseumShell } from "@/components/museum/shell";
 import { Reactions } from "@/components/museum/reactions";
+import { ShareBar } from "@/components/museum/share-bar";
 import { getLife } from "@/lib/museum/api";
-import { catalogNumber, formatLocation } from "@/lib/utils";
+import { APP_NAME } from "@/lib/museum/constants";
+import { catalogNumber, excerpt, formatLocation } from "@/lib/utils";
 
 export const Route = createFileRoute("/lives_/$id")({
   loader: async ({ params }) => {
@@ -10,6 +12,12 @@ export const Route = createFileRoute("/lives_/$id")({
     if (!life) throw notFound();
     return life;
   },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: `${loaderData?.title ?? "Almost life"} — ${APP_NAME}` },
+      { name: "description", content: excerpt(loaderData?.story ?? "", 140) },
+    ],
+  }),
   component: LifePage,
 });
 
@@ -39,6 +47,7 @@ function LifePage() {
         </ul>
         <div className="hairline my-8" />
         <p className="font-display text-xl leading-relaxed md:text-2xl">{life.story}</p>
+        <ShareBar title={life.title} path={`/lives/${life.id}`} />
         <Reactions
           kind="life"
           id={life.id}

@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as CuratorRouteImport } from './routes/curator'
+import { Route as DeskRouteImport } from './routes/desk'
 import { Route as ExitRouteImport } from './routes/exit'
 import { Route as ForgottenRouteImport } from './routes/forgotten'
 import { Route as GuidelinesRouteImport } from './routes/guidelines'
 import { Route as HallRouteImport } from './routes/hall'
+import { Route as KeptRouteImport } from './routes/kept'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LivesRouteImport } from './routes/lives'
 import { Route as MapRouteImport } from './routes/map'
@@ -48,6 +50,11 @@ const CuratorRoute = CuratorRouteImport.update({
   path: '/curator',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeskRoute = DeskRouteImport.update({
+  id: '/desk',
+  path: '/desk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExitRoute = ExitRouteImport.update({
   id: '/exit',
   path: '/exit',
@@ -66,6 +73,11 @@ const GuidelinesRoute = GuidelinesRouteImport.update({
 const HallRoute = HallRouteImport.update({
   id: '/hall',
   path: '/hall',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KeptRoute = KeptRouteImport.update({
+  id: '/kept',
+  path: '/kept',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LibraryRoute = LibraryRouteImport.update({
@@ -153,10 +165,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/curator': typeof CuratorRoute
+  '/desk': typeof DeskRoute
   '/exit': typeof ExitRoute
   '/forgotten': typeof ForgottenRoute
   '/guidelines': typeof GuidelinesRoute
   '/hall': typeof HallRoute
+  '/kept': typeof KeptRoute
   '/library': typeof LibraryRoute
   '/lives': typeof LivesRoute
   '/map': typeof MapRoute
@@ -178,10 +192,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/curator': typeof CuratorRoute
+  '/desk': typeof DeskRoute
   '/exit': typeof ExitRoute
   '/forgotten': typeof ForgottenRoute
   '/guidelines': typeof GuidelinesRoute
   '/hall': typeof HallRoute
+  '/kept': typeof KeptRoute
   '/library': typeof LibraryRoute
   '/lives': typeof LivesRoute
   '/map': typeof MapRoute
@@ -204,10 +220,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/curator': typeof CuratorRoute
+  '/desk': typeof DeskRoute
   '/exit': typeof ExitRoute
   '/forgotten': typeof ForgottenRoute
   '/guidelines': typeof GuidelinesRoute
   '/hall': typeof HallRoute
+  '/kept': typeof KeptRoute
   '/library': typeof LibraryRoute
   '/lives': typeof LivesRoute
   '/map': typeof MapRoute
@@ -231,10 +249,12 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/curator'
+    | '/desk'
     | '/exit'
     | '/forgotten'
     | '/guidelines'
     | '/hall'
+    | '/kept'
     | '/library'
     | '/lives'
     | '/map'
@@ -256,10 +276,12 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/curator'
+    | '/desk'
     | '/exit'
     | '/forgotten'
     | '/guidelines'
     | '/hall'
+    | '/kept'
     | '/library'
     | '/lives'
     | '/map'
@@ -281,10 +303,12 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/curator'
+    | '/desk'
     | '/exit'
     | '/forgotten'
     | '/guidelines'
     | '/hall'
+    | '/kept'
     | '/library'
     | '/lives'
     | '/map'
@@ -307,10 +331,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchiveRoute: typeof ArchiveRoute
   CuratorRoute: typeof CuratorRoute
+  DeskRoute: typeof DeskRoute
   ExitRoute: typeof ExitRoute
   ForgottenRoute: typeof ForgottenRoute
   GuidelinesRoute: typeof GuidelinesRoute
   HallRoute: typeof HallRoute
+  KeptRoute: typeof KeptRoute
   LibraryRoute: typeof LibraryRoute
   LivesRoute: typeof LivesRoute
   MapRoute: typeof MapRoute
@@ -352,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CuratorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/desk': {
+      id: '/desk'
+      path: '/desk'
+      fullPath: '/desk'
+      preLoaderRoute: typeof DeskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exit': {
       id: '/exit'
       path: '/exit'
@@ -378,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/hall'
       fullPath: '/hall'
       preLoaderRoute: typeof HallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kept': {
+      id: '/kept'
+      path: '/kept'
+      fullPath: '/kept'
+      preLoaderRoute: typeof KeptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/library': {
@@ -499,10 +539,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchiveRoute: ArchiveRoute,
   CuratorRoute: CuratorRoute,
+  DeskRoute: DeskRoute,
   ExitRoute: ExitRoute,
   ForgottenRoute: ForgottenRoute,
   GuidelinesRoute: GuidelinesRoute,
   HallRoute: HallRoute,
+  KeptRoute: KeptRoute,
   LibraryRoute: LibraryRoute,
   LivesRoute: LivesRoute,
   MapRoute: MapRoute,

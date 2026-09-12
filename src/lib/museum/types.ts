@@ -11,7 +11,7 @@ export type Emotion = (typeof EMOTIONS)[number];
 export type LifeCategory = (typeof LIFE_CATEGORIES)[number];
 export type VoiceCategory = (typeof VOICE_CATEGORIES)[number];
 export type CapsuleRecipient = (typeof CAPSULE_RECIPIENTS)[number];
-export type ArtifactKind = "memory" | "life" | "voice" | "book" | "wall";
+export type ArtifactKind = "memory" | "life" | "voice" | "book" | "wall" | "capsule" | "exit" | "reply";
 export type ReactionKey = "needed" | "understand" | "reminded";
 
 export type Memory = {
@@ -52,7 +52,7 @@ export type Capsule = {
   content: string | null;
   unlockAt: string;
   privacy: "public" | "private";
-  recipient: CapsuleRecipient;
+  recipient: CapsuleRecipient | "sealed";
   createdAt: string;
   locked: boolean;
   opened: boolean;
@@ -104,6 +104,11 @@ export type MapPoint = {
   count: number;
 };
 
+export type EmotionMap = {
+  points: MapPoint[];
+  unplaced: { city: string; count: number }[];
+};
+
 export type MuseumStats = {
   memories: number;
   lives: number;
@@ -113,6 +118,10 @@ export type MuseumStats = {
   wall: number;
   artifacts: number;
 };
+
+export type WriteResult =
+  | { ok: true; id: number; deleteCode?: string; accessCode?: string | null; editCode?: string }
+  | { ok: false; error: string; crisis?: boolean };
 
 export type CuratorReply = {
   ok: true;

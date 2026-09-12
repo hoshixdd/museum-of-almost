@@ -2,7 +2,10 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { MuseumShell } from "@/components/museum/shell";
 import { Letter } from "@/components/museum/letter";
 import { Reactions } from "@/components/museum/reactions";
+import { ShareBar } from "@/components/museum/share-bar";
 import { getMemory } from "@/lib/museum/api";
+import { APP_NAME } from "@/lib/museum/constants";
+import { excerpt } from "@/lib/utils";
 
 export const Route = createFileRoute("/archive_/$id")({
   loader: async ({ params }) => {
@@ -10,6 +13,12 @@ export const Route = createFileRoute("/archive_/$id")({
     if (!memory) throw notFound();
     return memory;
   },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: `${loaderData?.title ?? "Letter"} — ${APP_NAME}` },
+      { name: "description", content: excerpt(loaderData?.content ?? "", 140) },
+    ],
+  }),
   component: MemoryPage,
 });
 
@@ -25,6 +34,7 @@ function MemoryPage() {
         <div className="mt-8">
           <Letter memory={memory} full />
         </div>
+        <ShareBar title={memory.title} path={`/archive/${memory.id}`} />
         <Reactions
           kind="memory"
           id={memory.id}

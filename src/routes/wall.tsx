@@ -6,6 +6,7 @@ import { RoomHeader } from "@/components/museum/room-header";
 import { WallForm } from "@/components/museum/forms";
 import { GhostButton, TextInput } from "@/components/museum/fields";
 import { InView } from "@/components/museum/motion";
+import { EmptyRoom } from "@/components/museum/empty-room";
 import { createReply, listWall } from "@/lib/museum/api";
 import { Reactions } from "@/components/museum/reactions";
 
@@ -49,6 +50,9 @@ function WallPage() {
                 {post.replies.map((reply) => (
                   <li key={reply.id} className="text-sm text-mist">
                     {reply.content}
+                    <span className="ml-2 inline-block">
+                      <Reactions kind="reply" id={reply.id} />
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -67,18 +71,22 @@ function WallPage() {
                   void router.invalidate();
                 }}
               >
-                <TextInput
-                  value={drafts[post.id] ?? ""}
-                  onChange={(event) => setDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
-                  placeholder="I understand."
-                  maxLength={180}
-                />
+                <label className="flex-1">
+                  <span className="sr-only">Reply</span>
+                  <TextInput
+                    value={drafts[post.id] ?? ""}
+                    onChange={(event) => setDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
+                    placeholder="I understand."
+                    maxLength={180}
+                  />
+                </label>
                 <GhostButton type="submit">Reply</GhostButton>
               </form>
               <Reactions kind="wall" id={post.id} counts={{ understand: post.understandCount }} />
             </article>
           </InView>
         ))}
+        {posts.length === 0 ? <EmptyRoom line="The wall is blank." /> : null}
       </div>
     </MuseumShell>
   );
