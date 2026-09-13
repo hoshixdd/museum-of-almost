@@ -14,11 +14,18 @@ function NotFound() {
   );
 }
 
+function allowViewTransition() {
+  if (typeof window === "undefined") return false;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+  if (window.matchMedia("(pointer: coarse)").matches) return false;
+  return true;
+}
+
 export function getRouter() {
   return createRouter({
     routeTree,
     defaultErrorComponent: AppErrorComponent,
     defaultNotFoundComponent: NotFound,
-    defaultViewTransition: true,
+    defaultViewTransition: allowViewTransition(),
   });
 }

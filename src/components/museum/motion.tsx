@@ -1,16 +1,16 @@
 import { useRef } from "react";
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useReducedMotion } from "./reduced-motion";
 
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
 export const rise: Variants = {
-  hidden: { opacity: 0, y: 18, filter: "blur(8px)" },
+  hidden: { opacity: 0, y: 12 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.72, ease: easeOutExpo },
+    transition: { duration: 0.45, ease: easeOutExpo },
   },
 };
 
@@ -90,9 +90,9 @@ export function SplitLetters({
         <motion.span
           key={`${ch}-${index}`}
           className="inline-block"
-          initial={reduce ? false : { opacity: 0, y: 36, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ delay: delay + index * 0.045, duration: 0.7, ease: easeOutExpo }}
+          initial={reduce ? false : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: delay + index * 0.03, duration: 0.45, ease: easeOutExpo }}
         >
           {ch === " " ? "\u00A0" : ch}
         </motion.span>

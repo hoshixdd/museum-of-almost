@@ -3,6 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Atmosphere } from "@/components/museum/atmosphere";
 import { FilmGrain, GallerySpot, ScrollProgress } from "@/components/museum/presence";
+import { RoomLoader } from "@/components/museum/room-loader";
 import { Toaster } from "sonner";
 import { APP_DESCRIPTION, APP_NAME, SITE_URL } from "@/lib/museum/constants";
 import appCss from "../styles.css?url";
@@ -55,6 +56,7 @@ function RootDocument() {
             <FilmGrain />
           </div>
           <ScrollProgress />
+          <RoomLoader />
           <Outlet />
           <Toaster theme="dark" position="bottom-center" className="museum-toaster" />
         </AuthProvider>

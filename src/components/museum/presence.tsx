@@ -1,20 +1,10 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion as useMotionReduce } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { easeOutExpo } from "./motion";
 import { hasSeenHallIntro, markHallIntro } from "@/lib/museum/local";
+import { useReducedMotion } from "./reduced-motion";
 
-export function useReducedMotion() {
-  const fromMotion = useMotionReduce();
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduce(media.matches);
-    const onChange = () => setReduce(media.matches);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
-  return Boolean(fromMotion) || reduce;
-}
+export { useReducedMotion } from "./reduced-motion";
 
 export function FilmGrain() {
   return <div className="film-grain" aria-hidden="true" />;
@@ -73,6 +63,10 @@ export function ArrivalIntro() {
 
   useEffect(() => {
     if (reduce || hasSeenHallIntro()) return;
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      markHallIntro();
+      return;
+    }
     setShow(true);
   }, [reduce]);
 

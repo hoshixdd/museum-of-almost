@@ -38,7 +38,7 @@ export function MuseumShell({
     window.setTimeout(() => {
       setOpen(false);
       menuRef.current?.focus();
-    }, 380);
+    }, 120);
   }
 
   return (

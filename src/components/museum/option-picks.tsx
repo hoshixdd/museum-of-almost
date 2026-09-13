@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useReducedMotion } from "./reduced-motion";
 import { easeOutExpo } from "./motion";
 import { SUGGESTED_CITIES } from "@/lib/museum/constants";
 
