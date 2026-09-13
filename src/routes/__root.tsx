@@ -1,7 +1,8 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
-import { PageCurtain } from "@/components/museum/presence";
+import { Atmosphere } from "@/components/museum/atmosphere";
+import { FilmGrain, GallerySpot, ScrollProgress } from "@/components/museum/presence";
 import { Toaster } from "sonner";
 import { APP_DESCRIPTION, APP_NAME, SITE_URL } from "@/lib/museum/constants";
 import appCss from "../styles.css?url";
@@ -48,7 +49,12 @@ function RootDocument() {
       <body className="bg-ink text-paper">
         <PreviewHostBridge />
         <AuthProvider>
-          <PageCurtain />
+          <div className="museum-persist" aria-hidden="true">
+            <Atmosphere />
+            <GallerySpot />
+            <FilmGrain />
+          </div>
+          <ScrollProgress />
           <Outlet />
           <Toaster theme="dark" position="bottom-center" className="museum-toaster" />
         </AuthProvider>

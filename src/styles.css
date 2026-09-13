@@ -102,18 +102,6 @@
     min-width: 0;
     max-width: 100%;
   }
-
-  html.has-cursor,
-  html.has-cursor * {
-    cursor: none !important;
-  }
-
-  html.has-cursor input,
-  html.has-cursor textarea,
-  html.has-cursor select,
-  html.has-cursor [contenteditable="true"] {
-    cursor: text !important;
-  }
 }
 
 @keyframes rise {
@@ -444,34 +432,72 @@
   background: color-mix(in oklab, var(--color-gold) 70%, transparent);
 }
 
-.film-dissolve {
+.museum-persist {
   pointer-events: none;
   position: fixed;
   inset: 0;
-  z-index: 90;
-  display: grid;
-  place-items: center;
-  visibility: hidden;
-  opacity: 0;
-  background:
-    radial-gradient(ellipse at center, rgba(39, 31, 28, 0.35), rgba(12, 9, 8, 0.97) 72%);
-  transition:
-    opacity 420ms var(--ease-out-expo),
-    visibility 420ms var(--ease-out-expo);
+  z-index: 0;
+  view-transition-name: museum-persist;
 }
 
-.film-dissolve.is-covering,
-.film-dissolve.is-revealing {
-  visibility: visible;
+.museum-header {
+  view-transition-name: museum-header;
 }
 
-.film-dissolve.is-covering {
-  opacity: 1;
+.museum-footer {
+  view-transition-name: museum-footer;
 }
 
-.film-dissolve.is-revealing {
-  opacity: 0;
-  transition-duration: 560ms;
+.museum-page {
+  view-transition-name: museum-page;
+}
+
+@keyframes museum-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes museum-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(museum-page) {
+  animation: museum-fade-out 160ms var(--ease-out-expo) both;
+}
+
+::view-transition-new(museum-page) {
+  animation: museum-fade-in 360ms var(--ease-out-expo) both;
+}
+
+::view-transition-old(museum-persist),
+::view-transition-new(museum-persist),
+::view-transition-old(museum-header),
+::view-transition-new(museum-header),
+::view-transition-old(museum-footer),
+::view-transition-new(museum-footer) {
+  animation: none;
+  mix-blend-mode: normal;
+  height: 100%;
+}
+
+::view-transition-group(museum-persist),
+::view-transition-group(museum-header),
+::view-transition-group(museum-footer) {
+  z-index: 2;
 }
 
 .letterbox {
@@ -957,21 +983,6 @@
   border-radius: 16px !important;
 }
 
-@media (pointer: fine) {
-  html.has-cursor,
-  html.has-cursor body,
-  html.has-cursor a,
-  html.has-cursor button {
-    cursor: none;
-  }
-
-  html.has-cursor input,
-  html.has-cursor textarea,
-  html.has-cursor select {
-    cursor: text;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .museum-rise,
   .split-word,
@@ -991,6 +1002,13 @@
   .directory-veil {
     animation: none !important;
     transition: none !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(museum-page),
+  ::view-transition-new(museum-page) {
+    animation: none !important;
   }
 
   .museum-rise,

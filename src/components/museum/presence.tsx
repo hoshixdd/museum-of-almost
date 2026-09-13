@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion as useMotionReduce } from "motion/react";
-import { cn } from "@/lib/utils";
 import { easeOutExpo } from "./motion";
 import { hasSeenHallIntro, markHallIntro } from "@/lib/museum/local";
 
@@ -37,90 +35,7 @@ export function GallerySpot() {
 }
 
 export function MuseumCursor() {
-  const dot = useRef<HTMLDivElement>(null);
-  const ring = useRef<HTMLDivElement>(null);
-  const trails = useRef<Array<HTMLDivElement | null>>([]);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (reduce) return;
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    if (!fine) return;
-    document.documentElement.classList.add("has-cursor");
-    let x = window.innerWidth / 2;
-    let y = window.innerHeight / 2;
-    let rx = x;
-    let ry = y;
-    const trail = [
-      { x, y },
-      { x, y },
-      { x, y },
-    ];
-    let hover = false;
-    let frame = 0;
-
-    const onMove = (event: PointerEvent) => {
-      x = event.clientX;
-      y = event.clientY;
-      const target = event.target as HTMLElement | null;
-      hover = Boolean(target?.closest("a, button, [role='button']"));
-    };
-
-    const loop = () => {
-      rx += (x - rx) * 0.16;
-      ry += (y - ry) * 0.16;
-      trail[0].x += (rx - trail[0].x) * 0.22;
-      trail[0].y += (ry - trail[0].y) * 0.22;
-      trail[1].x += (trail[0].x - trail[1].x) * 0.2;
-      trail[1].y += (trail[0].y - trail[1].y) * 0.2;
-      trail[2].x += (trail[1].x - trail[2].x) * 0.18;
-      trail[2].y += (trail[1].y - trail[2].y) * 0.18;
-      if (dot.current) dot.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-      if (ring.current) {
-        ring.current.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
-        ring.current.classList.toggle("is-hover", hover);
-      }
-      trails.current.forEach((node, index) => {
-        if (!node) return;
-        node.style.transform = `translate3d(${trail[index].x}px, ${trail[index].y}px, 0)`;
-        node.style.opacity = hover ? "0" : `${0.45 - index * 0.12}`;
-      });
-      frame = requestAnimationFrame(loop);
-    };
-
-    window.addEventListener("pointermove", onMove, { passive: true });
-    frame = requestAnimationFrame(loop);
-    const onVis = () => {
-      if (document.hidden) cancelAnimationFrame(frame);
-      else frame = requestAnimationFrame(loop);
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      document.documentElement.classList.remove("has-cursor");
-      window.removeEventListener("pointermove", onMove);
-      document.removeEventListener("visibilitychange", onVis);
-      cancelAnimationFrame(frame);
-    };
-  }, [reduce]);
-
-  if (reduce) return null;
-
-  return (
-    <>
-      <div ref={dot} className="cursor-dot hidden md:block" aria-hidden="true" />
-      <div ref={ring} className="cursor-ring hidden md:block" aria-hidden="true" />
-      {[0, 1, 2].map((index) => (
-        <div
-          key={index}
-          ref={(node) => {
-            trails.current[index] = node;
-          }}
-          className="cursor-trail hidden md:block"
-          aria-hidden="true"
-        />
-      ))}
-    </>
-  );
+  return null;
 }
 
 export function ScrollProgress() {
@@ -142,49 +57,7 @@ export function ScrollProgress() {
 }
 
 export function PageCurtain() {
-  const router = useRouter();
-  const [phase, setPhase] = useState<"idle" | "covering" | "revealing">("idle");
-  const first = useRef(true);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (reduce) return;
-    const offBefore = router.subscribe("onBeforeNavigate", () => {
-      if (first.current) return;
-      setPhase("covering");
-    });
-    const offRendered = router.subscribe("onRendered", () => {
-      if (first.current) {
-        first.current = false;
-        return;
-      }
-      requestAnimationFrame(() => {
-        setPhase("revealing");
-        window.setTimeout(() => setPhase("idle"), 560);
-      });
-    });
-    return () => {
-      offBefore();
-      offRendered();
-    };
-  }, [router, reduce]);
-
-  if (reduce) return null;
-
-  return (
-    <div
-      className={cn(
-        "film-dissolve",
-        phase === "covering" && "is-covering",
-        phase === "revealing" && "is-revealing",
-      )}
-      aria-hidden="true"
-    >
-      <div className="letterbox top" />
-      <div className="letterbox bottom" />
-      <span className="film-mark">almost</span>
-    </div>
-  );
+  return null;
 }
 
 const ARRIVAL_CARDS = [
@@ -278,9 +151,9 @@ export function SplitTitle({
         <motion.span
           key={`${word}-${index}`}
           className="inline-block pr-[0.28em]"
-          initial={reduce ? false : { opacity: 0, y: 18, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ delay: index * 0.07, duration: 0.72, ease: easeOutExpo }}
+          initial={reduce ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.05, duration: 0.55, ease: easeOutExpo }}
         >
           {word}
         </motion.span>

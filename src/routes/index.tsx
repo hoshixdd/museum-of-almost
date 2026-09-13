@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Atmosphere } from "@/components/museum/atmosphere";
-import { FilmGrain, GallerySpot, MuseumCursor, useReducedMotion } from "@/components/museum/presence";
+import { useReducedMotion } from "@/components/museum/presence";
 import { Magnetic, easeOutExpo } from "@/components/museum/motion";
 import { acceptPact, hasAcceptedPact, hasEnteredMuseum, markEnteredMuseum } from "@/lib/museum/local";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/museum/constants";
@@ -79,10 +78,6 @@ function Entrance() {
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-ink px-5 text-center">
-      <Atmosphere dense />
-      <GallerySpot />
-      <FilmGrain />
-      <MuseumCursor />
       <div className="letterbox top is-on" aria-hidden="true" />
       <div className="letterbox bottom is-on" aria-hidden="true" />
       <div className="ember-glow" aria-hidden="true" />

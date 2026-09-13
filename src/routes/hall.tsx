@@ -1,12 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { MuseumShell } from "@/components/museum/shell";
 import { SafetyNote } from "@/components/museum/safety-note";
 import { ArrivalIntro, SplitTitle } from "@/components/museum/presence";
 import { InView, Magnetic, easeOutExpo } from "@/components/museum/motion";
 import { getMuseumStats } from "@/lib/museum/api";
-import { ANNEXES, APP_TAGLINE, DAILY_PROMPTS, ROOMS } from "@/lib/museum/constants";
-import { setComposePrompt } from "@/lib/museum/local";
+import { ANNEXES, APP_TAGLINE, ROOMS } from "@/lib/museum/constants";
 
 export const Route = createFileRoute("/hall")({
   loader: () => getMuseumStats(),
@@ -15,13 +14,6 @@ export const Route = createFileRoute("/hall")({
 
 function Hall() {
   const stats = Route.useLoaderData();
-  const navigate = useNavigate();
-  const prompt = DAILY_PROMPTS[new Date().getUTCDay() % DAILY_PROMPTS.length];
-
-  function writeTonight() {
-    setComposePrompt(prompt);
-    void navigate({ to: "/archive" });
-  }
 
   return (
     <MuseumShell>
@@ -41,22 +33,11 @@ function Hall() {
           Nothing here is ranked. Nothing is a performance. {stats.artifacts} stories are already
           waiting. {APP_TAGLINE}
         </motion.p>
-        <motion.button
-          type="button"
-          onClick={writeTonight}
-          className="prompt-chip mt-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.7, ease: easeOutExpo }}
-        >
-          <span className="text-[10px] tracking-[0.18em] uppercase opacity-70">tonight</span>
-          <span className="font-display text-base italic">{prompt}</span>
-        </motion.button>
         <motion.div
           className="mt-9 flex flex-wrap gap-3"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.7, ease: easeOutExpo }}
+          transition={{ delay: 0.4, duration: 0.7, ease: easeOutExpo }}
         >
           <Magnetic>
             <Link

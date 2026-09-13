@@ -3,13 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { APP_NAME, ROOMS } from "@/lib/museum/constants";
 import { cn } from "@/lib/utils";
-import { Atmosphere } from "./atmosphere";
 import { Directory } from "./directory";
-import { FilmGrain, GallerySpot, MuseumCursor, ScrollProgress } from "./presence";
 
 export function MuseumShell({
   children,
-  dense = false,
 }: {
   children: React.ReactNode;
   dense?: boolean;
@@ -52,12 +49,7 @@ export function MuseumShell({
       >
         Skip to rooms
       </a>
-      <Atmosphere dense={dense} />
-      <GallerySpot />
-      <FilmGrain />
-      <MuseumCursor />
-      <ScrollProgress />
-      <header className="relative z-20 flex items-center justify-between gap-4 px-5 py-5 md:px-8">
+      <header className="museum-header relative z-20 flex items-center justify-between gap-4 px-5 py-5 md:px-8">
         <Link
           to="/hall"
           className="font-display text-sm tracking-wide text-paper/80 italic transition-colors duration-300 hover:text-gold"
@@ -101,10 +93,10 @@ export function MuseumShell({
           </button>
         </div>
       </header>
-      <main id="museum-main" className="relative z-10">
+      <main id="museum-main" className="museum-page relative z-10">
         {children}
       </main>
-      <footer className="relative z-10 mt-20 border-t border-ash px-5 py-12 text-center md:px-8">
+      <footer className="museum-footer relative z-10 mt-20 border-t border-ash px-5 py-12 text-center md:px-8">
         <p className="font-display text-2xl text-paper/85 italic">leave something. or just sit.</p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-mist">
           <Link to="/desk" className="transition-colors duration-200 hover:text-paper">
