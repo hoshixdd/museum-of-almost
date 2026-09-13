@@ -62,6 +62,7 @@ export function MuseumShell({
           to="/hall"
           className="font-display text-sm tracking-wide text-paper/80 italic transition-colors duration-300 hover:text-gold"
         >
+          <span className="mr-1.5 text-gold not-italic">♡</span>
           {APP_NAME}
         </Link>
         <nav className="hidden items-center gap-5 lg:flex" aria-label="Rooms">
@@ -70,8 +71,10 @@ export function MuseumShell({
               key={room.slug}
               to={room.href}
               className={cn(
-                "text-sm transition-colors duration-300",
-                pathname.startsWith(room.href) ? "text-gold" : "text-mist hover:text-paper",
+                "relative text-sm transition-colors duration-300",
+                pathname.startsWith(room.href)
+                  ? "text-gold after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:bg-gold/80"
+                  : "text-mist hover:text-paper",
               )}
             >
               {room.name.replace("The ", "")}

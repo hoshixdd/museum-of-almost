@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { motion, useReducedMotion as useMotionReduce } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion as useMotionReduce } from "motion/react";
 import { cn } from "@/lib/utils";
 import { easeOutExpo } from "./motion";
+import { hasSeenHallIntro, markHallIntro } from "@/lib/museum/local";
 
 export function useReducedMotion() {
   const fromMotion = useMotionReduce();
@@ -157,8 +158,10 @@ export function PageCurtain() {
         first.current = false;
         return;
       }
-      setPhase("revealing");
-      window.setTimeout(() => setPhase("idle"), 740);
+      requestAnimationFrame(() => {
+        setPhase("revealing");
+        window.setTimeout(() => setPhase("idle"), 560);
+      });
     });
     return () => {
       offBefore();
@@ -171,15 +174,91 @@ export function PageCurtain() {
   return (
     <div
       className={cn(
-        "page-curtain",
+        "film-dissolve",
         phase === "covering" && "is-covering",
         phase === "revealing" && "is-revealing",
       )}
       aria-hidden="true"
     >
-      <div className="curtain-leaf left" />
-      <div className="curtain-leaf right" />
+      <div className="letterbox top" />
+      <div className="letterbox bottom" />
+      <span className="film-mark">almost</span>
     </div>
+  );
+}
+
+const ARRIVAL_CARDS = [
+  { kicker: "lights down", line: "you can stay as long as you want." },
+  { kicker: "a quiet house", line: "the museum of almost" },
+  { kicker: "sit anywhere", line: "nothing here is a performance." },
+];
+
+export function ArrivalIntro() {
+  const reduce = useReducedMotion();
+  const [show, setShow] = useState(false);
+  const [card, setCard] = useState(0);
+
+  useEffect(() => {
+    if (reduce || hasSeenHallIntro()) return;
+    setShow(true);
+  }, [reduce]);
+
+  useEffect(() => {
+    if (!show) return;
+    if (card >= ARRIVAL_CARDS.length) {
+      markHallIntro();
+      const timer = window.setTimeout(() => setShow(false), 420);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(() => setCard((value) => value + 1), 1100);
+    return () => window.clearTimeout(timer);
+  }, [show, card]);
+
+  function skip() {
+    markHallIntro();
+    setShow(false);
+  }
+
+  return (
+    <AnimatePresence>
+      {show ? (
+        <motion.div
+          className="arrival-intro"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, ease: easeOutExpo }}
+          role="dialog"
+          aria-label="Entering the museum"
+        >
+          <div className="letterbox top" />
+          <div className="letterbox bottom is-on" />
+          <button type="button" className="arrival-skip" onClick={skip}>
+            skip
+          </button>
+          <div className="arrival-stage">
+            <AnimatePresence mode="wait">
+              {card < ARRIVAL_CARDS.length ? (
+                <motion.div
+                  key={ARRIVAL_CARDS[card].line}
+                  className="text-center"
+                  initial={reduce ? false : { opacity: 0, y: 12, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -10, filter: "blur(6px)" }}
+                  transition={{ duration: 0.55, ease: easeOutExpo }}
+                >
+                  <p className="text-[11px] tracking-[0.4em] text-gold uppercase">
+                    {ARRIVAL_CARDS[card].kicker}
+                  </p>
+                  <p className="mt-4 font-display text-3xl text-paper italic md:text-5xl">
+                    {ARRIVAL_CARDS[card].line}
+                  </p>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 

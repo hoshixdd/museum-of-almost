@@ -1,11 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { MuseumShell } from "@/components/museum/shell";
 import { SafetyNote } from "@/components/museum/safety-note";
-import { SplitTitle } from "@/components/museum/presence";
+import { ArrivalIntro, SplitTitle } from "@/components/museum/presence";
 import { InView, Magnetic, easeOutExpo } from "@/components/museum/motion";
 import { getMuseumStats } from "@/lib/museum/api";
 import { ANNEXES, APP_TAGLINE, DAILY_PROMPTS, ROOMS } from "@/lib/museum/constants";
+import { setComposePrompt } from "@/lib/museum/local";
 
 export const Route = createFileRoute("/hall")({
   loader: () => getMuseumStats(),
@@ -14,10 +15,17 @@ export const Route = createFileRoute("/hall")({
 
 function Hall() {
   const stats = Route.useLoaderData();
+  const navigate = useNavigate();
   const prompt = DAILY_PROMPTS[new Date().getUTCDay() % DAILY_PROMPTS.length];
+
+  function writeTonight() {
+    setComposePrompt(prompt);
+    void navigate({ to: "/archive" });
+  }
 
   return (
     <MuseumShell>
+      <ArrivalIntro />
       <section className="relative mx-auto max-w-3xl px-5 pt-6 pb-14 md:px-8 md:pt-10">
         <p className="text-[11px] tracking-[0.28em] text-gold uppercase">you can stay as long as you want</p>
         <SplitTitle
@@ -33,14 +41,17 @@ function Hall() {
           Nothing here is ranked. Nothing is a performance. {stats.artifacts} stories are already
           waiting. {APP_TAGLINE}
         </motion.p>
-        <motion.p
-          className="mt-4 font-display text-xl text-gold italic"
+        <motion.button
+          type="button"
+          onClick={writeTonight}
+          className="prompt-chip mt-6"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.7, ease: easeOutExpo }}
         >
-          tonight’s prompt: {prompt}
-        </motion.p>
+          <span className="text-[10px] tracking-[0.18em] uppercase opacity-70">tonight</span>
+          <span className="font-display text-base italic">{prompt}</span>
+        </motion.button>
         <motion.div
           className="mt-9 flex flex-wrap gap-3"
           initial={{ opacity: 0, y: 12 }}
@@ -71,11 +82,9 @@ function Hall() {
               <InView>
                 <Link
                   to={room.href}
-                  className="room-tile group relative block rounded-xl bg-ink-elevated px-6 py-7 shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-border-hover)]"
+                  className="room-tile room-polaroid group relative block rounded-xl px-6 py-7 shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-border-hover)]"
                 >
-                  <span className="absolute top-3 right-5 font-display text-6xl text-gold/20">
-                    {room.roman}
-                  </span>
+                  <span className="room-stamp">{room.roman}</span>
                   <p className="text-[11px] tracking-[0.28em] text-gold uppercase">
                     gallery {room.roman}
                   </p>
@@ -100,7 +109,7 @@ function Hall() {
             <InView key={room.slug}>
               <Link
                 to={room.href}
-                className="block rounded-xl bg-ink-elevated px-5 py-6 shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-border-hover)]"
+                className="room-polaroid block rounded-xl px-5 py-6 shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[var(--shadow-border-hover)]"
               >
                 <p className="font-display text-2xl">{room.name}</p>
                 <p className="mt-2 text-sm text-mist">{room.line}</p>

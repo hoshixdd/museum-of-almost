@@ -128,3 +128,28 @@ export function rememberNeededId(id: number) {
   writeJson(NEEDED_KEY, next);
   return next;
 }
+
+const HALL_INTRO_KEY = "museum.hallIntro";
+const COMPOSE_PROMPT_KEY = "museum.composePrompt";
+
+export function hasSeenHallIntro() {
+  if (typeof window === "undefined") return true;
+  return localStorage.getItem(HALL_INTRO_KEY) === "1";
+}
+
+export function markHallIntro() {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(HALL_INTRO_KEY, "1");
+}
+
+export function setComposePrompt(text: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(COMPOSE_PROMPT_KEY, text);
+}
+
+export function takeComposePrompt() {
+  if (typeof window === "undefined") return "";
+  const value = sessionStorage.getItem(COMPOSE_PROMPT_KEY) ?? "";
+  sessionStorage.removeItem(COMPOSE_PROMPT_KEY);
+  return value;
+}

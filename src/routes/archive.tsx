@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { MuseumShell } from "@/components/museum/shell";
 import { RoomHeader } from "@/components/museum/room-header";
@@ -25,6 +25,11 @@ function ArchivePage() {
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [compose, setCompose] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem("museum.composePrompt")) setCompose(true);
+  }, []);
 
   const visible = useMemo(() => {
     return memories.filter((item) => {

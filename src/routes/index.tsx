@@ -83,6 +83,8 @@ function Entrance() {
       <GallerySpot />
       <FilmGrain />
       <MuseumCursor />
+      <div className="letterbox top is-on" aria-hidden="true" />
+      <div className="letterbox bottom is-on" aria-hidden="true" />
       <div className="ember-glow" aria-hidden="true" />
       <div className={cn("enter-bloom", leaving && "is-flooding")} aria-hidden="true" />
 

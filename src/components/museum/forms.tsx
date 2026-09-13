@@ -18,7 +18,7 @@ import {
   SUGGESTED_CITIES,
   VOICE_CATEGORIES,
 } from "@/lib/museum/constants";
-import { rememberCode } from "@/lib/museum/local";
+import { rememberCode, takeComposePrompt } from "@/lib/museum/local";
 import { ClaimSlip } from "./claim-slip";
 import { CrisisPanel, SafetyNote } from "./safety-note";
 import { Field, PrimaryButton, TextArea, TextInput } from "./fields";
@@ -78,6 +78,7 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
   const [crisis, setCrisis] = useState(false);
   const [claim, setClaim] = useState<{ code: string; id: number; title: string } | null>(null);
   const [location, setLocation] = useState("");
+  const [seedTitle] = useState(() => takeComposePrompt());
   const tone = paper ? "paper" : undefined;
 
   if (crisis) return <CrisisPanel />;
@@ -126,7 +127,14 @@ export function MemoryForm({ paper = false }: { paper?: boolean }) {
     >
       <SafetyNote compact />
       <Field label="Title">
-        <TextInput name="title" required maxLength={120} placeholder="The letter I never sent" tone={tone} />
+        <TextInput
+          name="title"
+          required
+          maxLength={120}
+          defaultValue={seedTitle}
+          placeholder="The letter I never sent"
+          tone={tone}
+        />
       </Field>
       <Field label="Message">
         <TextArea name="content" required maxLength={4000} placeholder="Write as if the person might never read it." tone={tone} />
